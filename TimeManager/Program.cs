@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using TimeManager.Data;
 using TimeManager.Models;
@@ -8,11 +9,17 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+
+
 builder.Services.AddDbContext<TimeManagerDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddIdentity<User, IdentityRole>(options => {
-    options.SignIn.RequireConfirmedAccount = false; 
+
+builder.Services.AddRazorPages();
+
+builder.Services.AddIdentity<User, IdentityRole>(options =>
+{
+    options.SignIn.RequireConfirmedAccount = false;
     options.Password.RequireDigit = true;
     options.Password.RequireLowercase = true;
     options.Password.RequireUppercase = true;
@@ -20,7 +27,8 @@ builder.Services.AddIdentity<User, IdentityRole>(options => {
     options.Password.RequiredLength = 8;
 })
 .AddEntityFrameworkStores<TimeManagerDbContext>()
-.AddDefaultTokenProviders();
+.AddDefaultTokenProviders()
+.AddDefaultUI();
 
 
 
