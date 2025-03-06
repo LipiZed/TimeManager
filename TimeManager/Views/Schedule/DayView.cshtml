@@ -1,0 +1,230 @@
+﻿@model DayViewModel
+@{
+    ViewData["Title"] = $"Расписание на {GetRussianDayName(Model.Day)}";
+}
+
+<div class="container">
+    <h1 class="mt-4 mb-4">Расписание на @GetRussianDayName(Model.Day)</h1>
+
+    <div class="mb-4">
+        <a asp-action="Index" class="btn btn-secondary mb-3">
+            <i class="bi bi-arrow-left"></i> Вернуться к неделе
+        </a>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addObjectiveModal">
+            <i class="bi bi-plus-circle"></i> Добавить задачу
+        </button>
+    </div>
+
+    <!-- Временная шкала -->
+    <div class="timeline-container">
+        @for (int hour = 0; hour < 24; hour++)
+        {
+            <div class="timeline-hour" id="hour-@hour">
+                <div class="hour-label">@hour:00</div>
+                <div class="hour-content">
+                    @foreach (var objective in Model.Objectives.Where(o => o.StartTime.Hour == hour))
+                    {
+                        var durationMinutes = objective.EndTime.HasValue
+                        ? (objective.EndTime.Value - objective.StartTime).TotalMinutes
+                        : 60;
+
+                        <div class="objective-item"
+                             data-objective-id="@objective.ObjectiveId"
+                             data-start-time="@objective.StartTime.ToString("yyyy-MM-ddTHH:mm")"
+                             data-end-time="@(objective.EndTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")"
+                             style="height: @(Math.Max(durationMinutes, 30))px;"
+                             onclick="showObjectiveDetails(@objective.ObjectiveId)">
+                            <div class="objective-title">@objective.Title</div>
+                            <div class="objective-time">
+                                @objective.StartTime.ToString("HH:mm") -
+                                @(objective.EndTime.HasValue ? objective.EndTime.Value.ToString("HH:mm") : "—")
+                            </div>
+                            <div class="objective-actions">
+                                <button type="button" class="btn btn-sm btn-outline-primary edit-objective" data-objective-id="@objective.ObjectiveId">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-objective" data-objective-id="@objective.ObjectiveId">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Модальное окно для добавления задачи -->
+<div class="modal fade" id="addObjectiveModal" tabindex="-1" aria-labelledby="addObjectiveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addObjectiveModalLabel">Добавить новую задачу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form asp-action="AddObjective" method="post" id="addObjectiveForm">
+                    <input type="hidden" name="day" value="@Model.Day" />
+
+                    <div class="mb-3">
+                        <label for="Title" class="form-label">Название:</label>
+                        <input type="text" class="form-control" id="Title" name="Title" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="Description" class="form-label">Описание:</label>
+                        <textarea class="form-control" id="Description" name="Description" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="StartTime" class="form-label">Время начала:</label>
+                            <input type="datetime-local" class="form-control" id="StartTime" name="StartTime" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="EndTime" class="form-label">Время окончания:</label>
+                            <input type="datetime-local" class="form-control" id="EndTime" name="EndTime" />
+                        </div>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="AddReminder" name="AddReminder">
+                        <label class="form-check-label" for="AddReminder">
+                            Добавить напоминание
+                        </label>
+                    </div>
+
+                    <div id="reminderSection" class="mb-3 d-none">
+                        <label for="ReminderTime" class="form-label">Время напоминания:</label>
+                        <input type="datetime-local" class="form-control" id="ReminderTime" name="ReminderTime" />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveObjectiveBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для деталей задачи -->
+<div class="modal fade" id="objectiveDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="objectiveDetailsTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="objectiveDetailsTime" class="mb-3 text-muted"></div>
+                <div id="objectiveDetailsDescription" class="mb-3"></div>
+                <div id="objectiveDetailsStatus" class="mb-3">
+                    <span class="badge" id="objectiveStatusBadge"></span>
+                </div>
+                <div id="objectiveDetailsReminders" class="mb-3">
+                    <h6>Напоминания:</h6>
+                    <ul id="remindersList"></ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-success" id="completeObjectiveBtn">Отметить выполненным</button>
+                <button type="button" class="btn btn-primary" id="editObjectiveBtn">Редактировать</button>
+                <button type="button" class="btn btn-danger" id="deleteObjectiveBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для редактирования задачи -->
+<div class="modal fade" id="editObjectiveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать задачу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form asp-action="EditObjective" method="post" id="editObjectiveForm">
+                    <input type="hidden" name="ObjectiveId" id="editObjectiveId" />
+                    <input type="hidden" name="day" value="@Model.Day" />
+
+                    <div class="mb-3">
+                        <label for="editTitle" class="form-label">Название:</label>
+                        <input type="text" class="form-control" id="editTitle" name="Title" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editDescription" class="form-label">Описание:</label>
+                        <textarea class="form-control" id="editDescription" name="Description" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editStartTime" class="form-label">Время начала:</label>
+                            <input type="datetime-local" class="form-control" id="editStartTime" name="StartTime" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editEndTime" class="form-label">Время окончания:</label>
+                            <input type="datetime-local" class="form-control" id="editEndTime" name="EndTime" />
+                        </div>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="editIsCompleted" name="IsCompleted">
+                        <label class="form-check-label" for="editIsCompleted">
+                            Задача выполнена
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="updateObjectiveBtn">Обновить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы действительно хотите удалить эту задачу?</p>
+                <p><strong>Название: </strong><span id="deleteObjectiveTitle"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form asp-action="DeleteObjective" method="post" id="deleteObjectiveForm">
+                    <input type="hidden" name="objectiveId" id="deleteObjectiveId" />
+                    <input type="hidden" name="day" value="@Model.Day" />
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    public string GetRussianDayName(DayOfWeek day)
+    {
+        switch (day)
+        {
+            case DayOfWeek.Monday: return "Понедельник";
+            case DayOfWeek.Tuesday: return "Вторник";
+            case DayOfWeek.Wednesday: return "Среда";
+            case DayOfWeek.Thursday: return "Четверг";
+            case DayOfWeek.Friday: return "Пятница";
+            case DayOfWeek.Saturday: return "Суббота";
+            case DayOfWeek.Sunday: return "Воскресенье";
+            default: return day.ToString();
+        }
+    }
+}

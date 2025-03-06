@@ -1,0 +1,51 @@
+﻿@{
+    ViewData["Title"] = "Недельное расписание";
+}
+@{
+    var days = new DayOfWeek[] {
+        DayOfWeek.Monday,
+        DayOfWeek.Tuesday,
+        DayOfWeek.Wednesday,
+        DayOfWeek.Thursday,
+        DayOfWeek.Friday,
+        DayOfWeek.Saturday,
+        DayOfWeek.Sunday
+    };
+}
+<div class="container">
+    <h1 class="mt-4 mb-4">Недельное расписание</h1>
+
+    <div class="row">
+        @foreach (DayOfWeek day in days)
+        {
+            <div class="col-md-3 mb-4">
+                <div class="card weekly-card">
+                    <div class="card-header">
+                        @GetRussianDayName(day)
+                    </div>
+                    <div class="card-body">
+                        <p>Посмотреть расписание на этот день</p>
+                        <a asp-action="DayView" asp-route-day="@day" class="btn btn-primary">Перейти</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@functions {
+    public string GetRussianDayName(DayOfWeek day)
+    {
+        switch (day)
+        {
+            case DayOfWeek.Monday: return "Понедельник";
+            case DayOfWeek.Tuesday: return "Вторник";
+            case DayOfWeek.Wednesday: return "Среда";
+            case DayOfWeek.Thursday: return "Четверг";
+            case DayOfWeek.Friday: return "Пятница";
+            case DayOfWeek.Saturday: return "Суббота";
+            case DayOfWeek.Sunday: return "Воскресенье";
+            default: return day.ToString();
+        }
+    }
+}
