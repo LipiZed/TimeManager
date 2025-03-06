@@ -12,8 +12,8 @@ using TimeManager.Data;
 namespace TimeManager.Migrations
 {
     [DbContext(typeof(TimeManagerDbContext))]
-    [Migration("20250301140423_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250306122925_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -190,6 +190,9 @@ namespace TimeManager.Migrations
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("WeekDay")
+                        .HasColumnType("int");
 
                     b.HasKey("ObjectiveId");
 

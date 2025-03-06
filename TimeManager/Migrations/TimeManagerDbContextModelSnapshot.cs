@@ -188,6 +188,9 @@ namespace TimeManager.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int>("WeekDay")
+                        .HasColumnType("int");
+
                     b.HasKey("ObjectiveId");
 
                     b.HasIndex("UserId");
