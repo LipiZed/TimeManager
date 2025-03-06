@@ -12,20 +12,25 @@ namespace TimeManager.Data
         {
         }
 
-        // Удаляем DbSet<User>, так как теперь пользователи будут в таблице AspNetUsers
         public DbSet<Models.Objective> Objectives { get; set; }
         public DbSet<Reminder> Reminders { get; set; }
+        public DbSet<Schedule> Schedules { get; set; } // Добавляем новую таблицу
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder); // Обязательно вызвать метод базового класса!
+            base.OnModelCreating(modelBuilder);
 
-            // Настраиваем связи с другими таблицами
             modelBuilder.Entity<User>()
                 .HasMany(u => u.Objectives)
                 .WithOne(t => t.User)
                 .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Schedule>()
+                .HasMany(s => s.Objectives)
+                .WithOne(o => o.Schedule)
+                .HasForeignKey(o => o.ScheduleId)
+                .OnDelete(DeleteBehavior.SetNull); // Если расписание удалено, задачи остаются
         }
     }
 }

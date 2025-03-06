@@ -8,8 +8,10 @@ namespace TimeManager.Models
         [Key]
         public int ObjectiveId { get; set; }
 
-        // Здесь важное изменение. Теперь ключ пользователя — это строка, а не число
         public string UserId { get; set; }
+
+        // Добавляем ссылку на расписание (день недели)
+        public int? ScheduleId { get; set; }
 
         [Required]
         [StringLength(100)]
@@ -30,6 +32,10 @@ namespace TimeManager.Models
         // Связь с пользователем
         [ForeignKey("UserId")]
         public virtual User User { get; set; }
+
+        // Связь с расписанием дня недели
+        [ForeignKey("ScheduleId")]
+        public virtual Schedule Schedule { get; set; }
 
         // Связь с напоминаниями
         public virtual ICollection<Reminder> Reminders { get; set; } = new List<Reminder>();
