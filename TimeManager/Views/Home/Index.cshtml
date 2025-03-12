@@ -1,8 +1,198 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "TimeTrack - управляйте своим временем эффективно";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+
+<!-- Подключаем Font Awesome для иконок -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+<header>
+    <div class="container">
+        <div class="header-content">
+            <a class="logo" asp-controller="Home" asp-action="Index">
+                <i class="fas fa-clock"></i> Тайм-менеджер
+            </a>
+            <nav class="navbar navbar-expand-sm navbar-toggleable-sm">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse">
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a class="btn btn-custom" asp-controller="Schedule" asp-action="Index">Расписание</a>
+                        </li>
+                    </ul>
+                    <div class="auth-buttons">
+                        @using Microsoft.AspNetCore.Identity
+                        @inject SignInManager<User> SignInManager
+                        @inject UserManager<User> UserManager
+
+                        @if (SignInManager.IsSignedIn(User))
+                        {
+                            <a class="btn btn-custom" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">
+                                Привет, @User.Identity?.Name!
+                            </a>
+                            <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                                <button type="submit" class="btn btn-custom">Выйти</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <a class="btn btn-custom" asp-area="Identity" asp-page="/Account/Login">Вход</a>
+                            <a class="btn btn-custom" asp-area="Identity" asp-page="/Account/Register">Регистрация</a>
+                        }
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<section class="hero">
+    <div class="container">
+        <h1>Управляйте своим временем эффективно</h1>
+        <p>TimeTrack — современный инструмент для планирования задач и повышения продуктивности. Организуйте свою неделю и получайте уведомления через Telegram.</p>
+        <div class="cta-buttons">
+            <button class="btn btn-primary cta-btn">Начать бесплатно</button>
+            <button class="btn btn-outline cta-btn">Подробнее</button>
+        </div>
+        <img src="/api/placeholder/800/400" alt="TimeTrack dashboard preview" style="max-width: 100%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);" />
+    </div>
+</section>
+
+<section class="features" id="features">
+    <div class="container">
+        <div class="section-title">
+            <h2>Наши возможности</h2>
+            <p>Все необходимые инструменты для эффективного управления временем в одном месте</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <h3>Недельное планирование</h3>
+                <p>Планируйте свою неделю по дням, создавайте задачи и расставляйте их на временной шкале</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fab fa-telegram-plane"></i>
+                </div>
+                <h3>Интеграция с Telegram</h3>
+                <p>Получайте уведомления о предстоящих задачах прямо в вашем Telegram мессенджере</p>
+            </div>
+            
+        </div>
+    </div>
+</section>
+
+<section class="week-preview" id="week">
+    <div class="container">
+        <div class="section-title">
+            <h2>Планируйте свою неделю</h2>
+            <p>Выберите день недели для детального планирования задач</p>
+        </div>
+        <div class="days-grid">
+            <div class="day-card">
+                <h3>ПН</h3>
+                <p>Понедельник</p>
+            </div>
+            <div class="day-card">
+                <h3>ВТ</h3>
+                <p>Вторник</p>
+            </div>
+            <div class="day-card">
+                <h3>СР</h3>
+                <p>Среда</p>
+            </div>
+            <div class="day-card">
+                <h3>ЧТ</h3>
+                <p>Четверг</p>
+            </div>
+            <div class="day-card">
+                <h3>ПТ</h3>
+                <p>Пятница</p>
+            </div>
+            <div class="day-card">
+                <h3>СБ</h3>
+                <p>Суббота</p>
+            </div>
+            <div class="day-card">
+                <h3>ВС</h3>
+                <p>Воскресенье</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="telegram-section" id="telegram">
+    <div class="container">
+        <div class="telegram-content">
+            <h2>Не пропускайте важные задачи</h2>
+            <p>Привяжите свой аккаунт Telegram и получайте своевременные уведомления о предстоящих задачах. Больше не нужно беспокоиться о том, что вы что-то забудете!</p>
+            <button class="btn" style="background-color: white; color: var(--primary);">
+                <i class="fab fa-telegram-plane"></i> Привязать Telegram
+            </button>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <div class="footer-content">
+            <div class="footer-column">
+                <h3>О сервисе</h3>
+                <ul>
+                    <li><a href="#">О нас</a></li>
+                    <li><a href="#">Блог</a></li>
+                    <li><a href="#">Отзывы</a></li>
+                    <li><a href="#">Контакты</a></li>
+                </ul>
+            </div>
+            <div class="footer-column">
+                <h3>Возможности</h3>
+                <ul>
+                    <li><a href="#">Планирование</a></li>
+                    <li><a href="#">Уведомления</a></li>
+                    <li><a href="#">Интеграции</a></li>
+                    <li><a href="#">Аналитика</a></li>
+                </ul>
+            </div>
+            <div class="footer-column">
+                <h3>Поддержка</h3>
+                <ul>
+                    <li><a href="#">FAQ</a></li>
+                    <li><a href="#">Руководство</a></li>
+                    <li><a href="#">Сообщить о проблеме</a></li>
+                    <li><a href="#">Статус сервиса</a></li>
+                </ul>
+            </div>
+            <div class="footer-column">
+                <h3>Правовая информация</h3>
+                <ul>
+                    <li><a href="#">Условия использования</a></li>
+                    <li><a href="#">Политика конфиденциальности</a></li>
+                    <li><a href="#">Правила сервиса</a></li>
+                    <li><a href="#">Cookie политика</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="copyright">
+            <p>&copy; 2025 TimeTrack. Все права защищены.</p>
+        </div>
+    </div>
+</footer>
+
+<script>
+    // Простой JavaScript для навигации к дням недели
+    document.addEventListener('DOMContentLoaded', function() {
+        const dayCards = document.querySelectorAll('.day-card');
+        dayCards.forEach((card, index) => {
+            card.addEventListener('click', () => {
+                const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                window.location.href = `/${days[index]}`;
+            });
+        });
+    });
+</script>
