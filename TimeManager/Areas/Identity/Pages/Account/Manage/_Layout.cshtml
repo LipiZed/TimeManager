@@ -9,17 +9,30 @@
     }
 }
 
-<h1>Manage your account</h1>
+<div class="container">
+    <div class="login-container mt-4">
+        <h1 class="text-center mb-4">Управление аккаунтом</h1>
 
-<div>
-    <h2>Change your account settings</h2>
-    <hr />
-    <div class="row">
-        <div class="col-md-3">
-            <partial name="_ManageNav" />
-        </div>
-        <div class="col-md-9">
-            @RenderBody()
+        <div>
+            <h2 class="mb-3">Измените параметры своего аккаунта</h2>
+            <hr class="mb-4" />
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card weekly-card mb-4">
+                        <div class="card-header">Параметры учетной записи</div>
+                        <div class="card-body p-10">
+                            <partial name="_ManageNav" />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="card weekly-card">
+                        <div class="card-body">
+                            @RenderBody()
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
