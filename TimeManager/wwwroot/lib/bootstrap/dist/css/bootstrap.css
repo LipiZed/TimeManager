@@ -4433,6 +4433,7 @@ textarea.form-control-lg {
 }
 
 .card-body {
+  margin: 5px 0; /* Отступы между элементами */
   flex: 1 1 auto;
   padding: var(--bs-card-spacer-y) var(--bs-card-spacer-x);
   color: var(--bs-card-color);
