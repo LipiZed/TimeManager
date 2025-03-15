@@ -14,7 +14,6 @@
         <p>TimeTrack — современный инструмент для планирования задач и повышения продуктивности. Организуйте свою неделю и получайте уведомления через Telegram.</p>
         <div class="cta-buttons">
             <button class="btn btn-primary cta-btn">Начать бесплатно</button>
-            <button class="btn btn-outline cta-btn">Подробнее</button>
         </div>
         <img src="/api/placeholder/800/400" alt="TimeTrack dashboard preview" style="max-width: 100%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);" />
     </div>
@@ -50,34 +49,34 @@
     <div class="container">
         <div class="section-title">
             <h2>Планируйте свою неделю</h2>
-            <p>Выберите день недели для детального планирования задач</p>
+            <p>Выберите двень недели для детального планирования задач</p>
         </div>
         <div class="days-grid">
-            <div class="day-card">
+            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
                 <h3>ПН</h3>
                 <p>Понедельник</p>
             </div>
-            <div class="day-card">
+            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
                 <h3>ВТ</h3>
                 <p>Вторник</p>
             </div>
-            <div class="day-card">
+            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
                 <h3>СР</h3>
                 <p>Среда</p>
             </div>
-            <div class="day-card">
+            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
                 <h3>ЧТ</h3>
                 <p>Четверг</p>
             </div>
-            <div class="day-card">
+            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
                 <h3>ПТ</h3>
                 <p>Пятница</p>
             </div>
-            <div class="day-card">
+            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
                 <h3>СБ</h3>
                 <p>Суббота</p>
             </div>
-            <div class="day-card">
+            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
                 <h3>ВС</h3>
                 <p>Воскресенье</p>
             </div>
@@ -101,57 +100,13 @@
     <div class="container">
         <div class="footer-content">
             <div class="footer-column">
-                <h3>О сервисе</h3>
-                <ul>
-                    <li><a href="#">О нас</a></li>
-                    <li><a href="#">Блог</a></li>
-                    <li><a href="#">Отзывы</a></li>
-                    <li><a href="#">Контакты</a></li>
-                </ul>
-            </div>
-            <div class="footer-column">
-                <h3>Возможности</h3>
-                <ul>
-                    <li><a href="#">Планирование</a></li>
-                    <li><a href="#">Уведомления</a></li>
-                    <li><a href="#">Интеграции</a></li>
-                    <li><a href="#">Аналитика</a></li>
-                </ul>
-            </div>
-            <div class="footer-column">
-                <h3>Поддержка</h3>
-                <ul>
-                    <li><a href="#">FAQ</a></li>
-                    <li><a href="#">Руководство</a></li>
-                    <li><a href="#">Сообщить о проблеме</a></li>
-                    <li><a href="#">Статус сервиса</a></li>
-                </ul>
-            </div>
-            <div class="footer-column">
-                <h3>Правовая информация</h3>
-                <ul>
-                    <li><a href="#">Условия использования</a></li>
-                    <li><a href="#">Политика конфиденциальности</a></li>
-                    <li><a href="#">Правила сервиса</a></li>
-                    <li><a href="#">Cookie политика</a></li>
-                </ul>
+                <h3 align="center">О сервисе</h3>
+                <p align="center">Сервис разработан Никитой Носыревым</p>
             </div>
         </div>
         <div class="copyright">
-            <p>&copy; 2025 TimeTrack. Все права защищены.</p>
+            <p>&copy; 2025 TimeTrack. Все права не защищены, потому что я не знаю как из защищать, если хотите отобрать подходите, будем драться.</p>
         </div>
     </div>
 </footer>
 
-<script>
-    // Простой JavaScript для навигации к дням недели
-    document.addEventListener('DOMContentLoaded', function() {
-        const dayCards = document.querySelectorAll('.day-card');
-        dayCards.forEach((card, index) => {
-            card.addEventListener('click', () => {
-                const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-                window.location.href = `/${days[index]}`;
-            });
-        });
-    });
-</script>
