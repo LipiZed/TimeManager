@@ -15,39 +15,142 @@
         </button>
     </div>
 
-    <!-- Временная шкала -->
     <div class="timeline-container">
         @for (int hour = 0; hour < 24; hour++)
         {
             <div class="timeline-hour" id="hour-@hour">
                 <div class="hour-label">@hour:00</div>
                 <div class="hour-content">
-                    @foreach (var objective in Model.Objectives.Where(o => o.StartTime.Hour == hour))
-                    {
-                        var durationMinutes = objective.EndTime.HasValue
-                        ? (objective.EndTime.Value - objective.StartTime).TotalMinutes
-                        : 60;
+                    @{
+                        // Получаем все задачи, которые пересекаются с этим часом
+                        var objectivesInHour = Model.Objectives
+                            .Where(o => o.StartTime.Hour <= hour &&
+                                        (o.EndTime.HasValue ? o.EndTime.Value.Hour >= hour : o.StartTime.Hour == hour))
+                            .OrderBy(o => o.StartTime)
+                            .ToList();
 
-                        <div class="objective-item"
-                             data-objective-id="@objective.ObjectiveId"
-                             data-start-time="@objective.StartTime.ToString("yyyy-MM-ddTHH:mm")"
-                             data-end-time="@(objective.EndTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")"
-                             style="height: @(Math.Max(durationMinutes, 30))px;"
-                             onclick="showObjectiveDetails(@objective.ObjectiveId)">
-                            <div class="objective-title">@objective.Title</div>
-                            <div class="objective-time">
-                                @objective.StartTime.ToString("HH:mm") -
-                                @(objective.EndTime.HasValue ? objective.EndTime.Value.ToString("HH:mm") : "—")
-                            </div>
-                            <div class="objective-actions">
-                                <button type="button" class="btn btn-sm btn-outline-primary edit-objective" data-objective-id="@objective.ObjectiveId">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger delete-objective" data-objective-id="@objective.ObjectiveId">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        </div>
+                        // Определяем пересекающиеся группы задач
+                        var columns = new List<List<Objective>>();
+                        foreach (var objective in objectivesInHour)
+                        {
+                            bool placed = false;
+                            foreach (var column in columns)
+                            {
+                                var lastInColumn = column.Last();
+                                bool intersects = objective.StartTime < lastInColumn.EndTime ||
+                                                  (lastInColumn.EndTime == null && objective.StartTime.Hour == lastInColumn.StartTime.Hour);
+                                if (!intersects)
+                                {
+                                    column.Add(objective);
+                                    placed = true;
+                                    break;
+                                }
+                            }
+                            if (!placed)
+                            {
+                                columns.Add(new List<Objective> { objective });
+                            }
+                        }
+
+                        // Рендерим задачи с учетом колонок
+                        int columnCount = columns.Count;
+                        double columnWidth = columnCount > 0 ? 100.0 / columnCount : 100.0;
+                        double marginPercent = 2.0; // Отступ в процентах (2% с каждой стороны)
+                        for (int colIndex = 0; colIndex < columns.Count; colIndex++)
+                        {
+                            var column = columns[colIndex];
+                            foreach (var objective in column)
+                            {
+                                bool startsInThisHour = objective.StartTime.Hour == hour;
+                                bool endsInThisHour = objective.EndTime.HasValue && objective.EndTime.Value.Hour == hour;
+                                bool spansHour = objective.StartTime.Hour < hour &&
+                                                 (objective.EndTime.HasValue ? objective.EndTime.Value.Hour > hour : false);
+
+                                double height;
+                                if (spansHour)
+                                {
+                                    height = 60;
+                                }
+                                else if (startsInThisHour && endsInThisHour)
+                                {
+                                    height = (objective.EndTime.Value - objective.StartTime).TotalMinutes;
+                                }
+                                else if (startsInThisHour)
+                                {
+                                    var minutesInHour = 60 - objective.StartTime.Minute;
+                                    if (objective.EndTime.HasValue && objective.EndTime.Value.Hour > hour)
+                                    {
+                                        height = minutesInHour;
+                                    }
+                                    else
+                                    {
+                                        height = (objective.EndTime.Value - objective.StartTime).TotalMinutes;
+                                    }
+                                }
+                                else if (endsInThisHour)
+                                {
+                                    var endTime = objective.EndTime.Value;
+                                    var startOfHour = new DateTime(endTime.Year, endTime.Month, endTime.Day, hour, 0, 0);
+                                    height = (endTime - startOfHour).TotalMinutes;
+                                }
+                                else
+                                {
+                                    height = 60;
+                                }
+
+                                double offset = startsInThisHour ? objective.StartTime.Minute : 0;
+                                height = Math.Max(height, 30);
+
+                                // Определяем классы для первой и последней части
+                                string partClass = "";
+                                if (startsInThisHour)
+                                {
+                                    partClass = "first-part";
+                                }
+                                else if (endsInThisHour)
+                                {
+                                    partClass = "last-part";
+                                }
+                                else
+                                {
+                                    partClass = "middle-part";
+                                }
+
+                                // Вычисляем позицию колонки с учетом отступов
+                                double leftPosition = (colIndex * columnWidth) + marginPercent;
+                                double rightPosition = ((colIndex + 1) * columnWidth) - marginPercent;
+
+                                <div class="objective-item @(objective.IsCompleted ? "completed" : "upcoming") @partClass"
+                                     data-objective-id="@objective.ObjectiveId"
+                                     data-start-time="@objective.StartTime.ToString("yyyy-MM-ddTHH:mm")"
+                                     data-end-time="@(objective.EndTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")"
+                                     style="height: @(height)px; top: @(offset)px; left: @(leftPosition)%; right: @(100 - rightPosition)%;"
+                                     onclick="showObjectiveDetails(@objective.ObjectiveId)">
+                                    @if (startsInThisHour)
+                                    {
+                                        <div class="objective-header">
+                                            <span class="objective-title">@objective.Title</span>
+                                            @if (!string.IsNullOrEmpty(objective.Description))
+                                            {
+                                                <span class="objective-description"> - @objective.Description</span>
+                                            }
+                                        </div>
+                                        <div class="objective-time">
+                                            @objective.StartTime.ToString("HH:mm") -
+                                            @(objective.EndTime.HasValue ? objective.EndTime.Value.ToString("HH:mm") : "—")
+                                        </div>
+                                        <div class="objective-actions">
+                                            <button type="button" class="btn btn-sm btn-outline-primary edit-objective" data-objective-id="@objective.ObjectiveId">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger delete-objective" data-objective-id="@objective.ObjectiveId">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
                     }
                 </div>
             </div>
@@ -55,7 +158,7 @@
     </div>
 </div>
 
-<!-- Модальное окно для добавления задачи -->
+<!-- Модальное окно добавления -->
 <div class="modal fade" id="addObjectiveModal" tabindex="-1" aria-labelledby="addObjectiveModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -66,50 +169,43 @@
             <div class="modal-body">
                 <form asp-action="AddObjective" method="post" id="addObjectiveForm">
                     <input type="hidden" name="day" value="@Model.Day" />
-
                     <div class="mb-3">
-                        <label for="Title" class="form-label">Название:</label>
-                        <input type="text" class="form-control" id="Title" name="Title" required />
+                        <label for="addTitle" class="form-label">Название:</label>
+                        <input type="text" class="form-control" id="addTitle" name="Title" required />
                     </div>
-
                     <div class="mb-3">
-                        <label for="Description" class="form-label">Описание:</label>
-                        <textarea class="form-control" id="Description" name="Description" rows="3"></textarea>
+                        <label for="addDescription" class="form-label">Описание:</label>
+                        <textarea class="form-control" id="addDescription" name="Description" rows="3"></textarea>
                     </div>
-
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="StartTime" class="form-label">Время начала:</label>
-                            <input type="datetime-local" class="form-control" id="StartTime" name="StartTime" required />
+                            <label for="addStartTime" class="form-label">Время начала:</label>
+                            <input type="datetime-local" class="form-control" id="addStartTime" name="StartTime" required />
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="EndTime" class="form-label">Время окончания:</label>
-                            <input type="datetime-local" class="form-control" id="EndTime" name="EndTime" />
+                            <label for="addEndTime" class="form-label">Время окончания:</label>
+                            <input type="datetime-local" class="form-control" id="addEndTime" name="EndTime" />
                         </div>
                     </div>
-
                     <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="AddReminder" name="AddReminder">
-                        <label class="form-check-label" for="AddReminder">
-                            Добавить напоминание
-                        </label>
+                        <input class="form-check-input" type="checkbox" id="addReminder" name="AddReminder">
+                        <label class="form-check-label" for="addReminder">Добавить напоминание</label>
                     </div>
-
-                    <div id="reminderSection" class="mb-3 d-none">
-                        <label for="ReminderTime" class="form-label">Время напоминания:</label>
-                        <input type="datetime-local" class="form-control" id="ReminderTime" name="ReminderTime" />
+                    <div id="addReminderSection" class="mb-3 d-none">
+                        <label for="addReminderTime" class="form-label">Время напоминания:</label>
+                        <input type="datetime-local" class="form-control" id="addReminderTime" name="ReminderTime" />
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-primary" id="saveObjectiveBtn">Сохранить</button>
+                <button type="button" class="btn btn-primary" onclick="submitForm('addObjectiveForm')">Сохранить</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Модальное окно для деталей задачи -->
+<!-- Модальное окно деталей -->
 <div class="modal fade" id="objectiveDetailsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -123,22 +219,23 @@
                 <div id="objectiveDetailsStatus" class="mb-3">
                     <span class="badge" id="objectiveStatusBadge"></span>
                 </div>
-                <div id="objectiveDetailsReminders" class="mb-3">
-                    <h6>Напоминания:</h6>
-                    <ul id="remindersList"></ul>
+                <div id="objectiveDetailsReminder" class="mb-3 d-none">
+                    <h6>Напоминание:</h6>
+                    <span id="reminderTime"></span>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                <button type="button" class="btn btn-success" id="completeObjectiveBtn">Отметить выполненным</button>
-                <button type="button" class="btn btn-primary" id="editObjectiveBtn">Редактировать</button>
-                <button type="button" class="btn btn-danger" id="deleteObjectiveBtn">Удалить</button>
+                <button type="button" class="btn btn-success" id="completeObjectiveBtn"
+                        onclick="completeObjective()">Отметить выполненным</button>
+                <button type="button" class="btn btn-primary" onclick="showEditFromDetails()">Редактировать</button>
+                <button type="button" class="btn btn-danger" onclick="showDeleteFromDetails()">Удалить</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Модальное окно для редактирования задачи -->
+<!-- Модальное окно редактирования -->
 <div class="modal fade" id="editObjectiveModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -150,17 +247,14 @@
                 <form asp-action="EditObjective" method="post" id="editObjectiveForm">
                     <input type="hidden" name="ObjectiveId" id="editObjectiveId" />
                     <input type="hidden" name="day" value="@Model.Day" />
-
                     <div class="mb-3">
                         <label for="editTitle" class="form-label">Название:</label>
                         <input type="text" class="form-control" id="editTitle" name="Title" required />
                     </div>
-
                     <div class="mb-3">
                         <label for="editDescription" class="form-label">Описание:</label>
                         <textarea class="form-control" id="editDescription" name="Description" rows="3"></textarea>
                     </div>
-
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="editStartTime" class="form-label">Время начала:</label>
@@ -171,24 +265,21 @@
                             <input type="datetime-local" class="form-control" id="editEndTime" name="EndTime" />
                         </div>
                     </div>
-
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="editIsCompleted" name="IsCompleted">
-                        <label class="form-check-label" for="editIsCompleted">
-                            Задача выполнена
-                        </label>
+                        <label class="form-check-label" for="editIsCompleted">Задача выполнена</label>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-primary" id="updateObjectiveBtn">Обновить</button>
+                <button type="button" class="btn btn-primary" onclick="submitForm('editObjectiveForm')">Обновить</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Модальное окно подтверждения удаления -->
+<!-- Модальное окно удаления -->
 <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -202,11 +293,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <form asp-action="DeleteObjective" method="post" id="deleteObjectiveForm">
-                    <input type="hidden" name="objectiveId" id="deleteObjectiveId" />
-                    <input type="hidden" name="day" value="@Model.Day" />
-                    <button type="submit" class="btn btn-danger">Удалить</button>
-                </form>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Удалить</button>
             </div>
         </div>
     </div>
@@ -227,4 +314,109 @@
             default: return day.ToString();
         }
     }
+}
+
+@section Scripts {
+    <script>
+        let currentObjectiveId = null;
+
+        // Показать детали задачи
+        async function showObjectiveDetails(objectiveId) {
+            currentObjectiveId = objectiveId;
+            const response = await fetch(`/Schedule/GetObjective?objectiveId=${objectiveId}`);
+            const data = await response.json();
+
+            document.getElementById('objectiveDetailsTitle').textContent = data.title;
+            document.getElementById('objectiveDetailsTime').textContent =
+                `${new Date(data.startTime).toLocaleTimeString()} - ${data.endTime ? new Date(data.endTime).toLocaleTimeString() : '—'}`;
+            document.getElementById('objectiveDetailsDescription').textContent = data.description || 'Нет описания';
+            const statusBadge = document.getElementById('objectiveStatusBadge');
+            statusBadge.textContent = data.isCompleted ? 'Выполнено' : 'В процессе';
+            statusBadge.className = `badge ${data.isCompleted ? 'bg-success' : 'bg-warning'}`;
+
+            const reminderSection = document.getElementById('objectiveDetailsReminder');
+            const reminderTime = document.getElementById('reminderTime');
+            if (data.reminderTime) {
+                reminderSection.classList.remove('d-none');
+                reminderTime.textContent = new Date(data.reminderTime).toLocaleString();
+            } else {
+                reminderSection.classList.add('d-none');
+            }
+
+            new bootstrap.Modal(document.getElementById('objectiveDetailsModal')).show();
+        }
+
+        // Показать модал редактирования
+        async function showEditModal(objectiveId) {
+            currentObjectiveId = objectiveId;
+            const response = await fetch(`/Schedule/GetObjective?objectiveId=${objectiveId}`);
+            const data = await response.json();
+
+            document.getElementById('editObjectiveId').value = data.objectiveId;
+            document.getElementById('editTitle').value = data.title;
+            document.getElementById('editDescription').value = data.description || '';
+            document.getElementById('editStartTime').value = data.startTime;
+            document.getElementById('editEndTime').value = data.endTime || '';
+            document.getElementById('editIsCompleted').checked = data.isCompleted;
+
+            new bootstrap.Modal(document.getElementById('editObjectiveModal')).show();
+        }
+
+        // Показать модал удаления
+        function showDeleteModal(objectiveId, title) {
+            currentObjectiveId = objectiveId;
+            document.getElementById('deleteObjectiveTitle').textContent = title;
+            new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
+        }
+
+        // Переходы из модала деталей
+        function showEditFromDetails() {
+            document.getElementById('objectiveDetailsModal').querySelector('.btn-close').click();
+            showEditModal(currentObjectiveId);
+        }
+
+        function showDeleteFromDetails() {
+            document.getElementById('objectiveDetailsModal').querySelector('.btn-close').click();
+            const title = document.getElementById('objectiveDetailsTitle').textContent;
+            showDeleteModal(currentObjectiveId, title);
+        }
+
+        // Отправка формы
+        function submitForm(formId) {
+            document.getElementById(formId).submit();
+        }
+
+        // Завершение задачи
+        async function completeObjective() {
+            await fetch(`/Schedule/CompleteObjective`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: `objectiveId=${currentObjectiveId}&day=${@((int)Model.Day)}`
+            });
+            location.reload();
+        }
+
+        // Подтверждение удаления
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            await fetch(`/Schedule/DeleteObjective`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: `objectiveId=${currentObjectiveId}&day=${@((int)Model.Day)}`
+            });
+            location.reload();
+        });
+
+        // Показ/скрытие поля напоминания
+        document.getElementById('addReminder').addEventListener('change', function() {
+            document.getElementById('addReminderSection').classList.toggle('d-none', !this.checked);
+        });
+    </script>
+}
+
 }
