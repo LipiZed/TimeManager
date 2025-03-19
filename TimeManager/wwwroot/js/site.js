@@ -169,3 +169,4 @@ function prepareEditObjective(objectiveId) {
 }
 
 // Функция для подтверждения
+
