@@ -16,144 +16,100 @@
     </div>
 
     <div class="timeline-container">
+        <!-- Сначала рендерим временные метки -->
         @for (int hour = 0; hour < 24; hour++)
         {
             <div class="timeline-hour" id="hour-@hour">
                 <div class="hour-label">@hour:00</div>
-                <div class="hour-content">
-                    @{
-                        // Получаем все задачи, которые пересекаются с этим часом
-                        var objectivesInHour = Model.Objectives
-                            .Where(o => o.StartTime.Hour <= hour &&
-                                        (o.EndTime.HasValue ? o.EndTime.Value.Hour >= hour : o.StartTime.Hour == hour))
-                            .OrderBy(o => o.StartTime)
-                            .ToList();
-
-                        // Определяем пересекающиеся группы задач
-                        var columns = new List<List<Objective>>();
-                        foreach (var objective in objectivesInHour)
-                        {
-                            bool placed = false;
-                            foreach (var column in columns)
-                            {
-                                var lastInColumn = column.Last();
-                                bool intersects = objective.StartTime < lastInColumn.EndTime ||
-                                                  (lastInColumn.EndTime == null && objective.StartTime.Hour == lastInColumn.StartTime.Hour);
-                                if (!intersects)
-                                {
-                                    column.Add(objective);
-                                    placed = true;
-                                    break;
-                                }
-                            }
-                            if (!placed)
-                            {
-                                columns.Add(new List<Objective> { objective });
-                            }
-                        }
-
-                        // Рендерим задачи с учетом колонок
-                        int columnCount = columns.Count;
-                        double columnWidth = columnCount > 0 ? 100.0 / columnCount : 100.0;
-                        double marginPercent = 2.0; // Отступ в процентах (2% с каждой стороны)
-                        for (int colIndex = 0; colIndex < columns.Count; colIndex++)
-                        {
-                            var column = columns[colIndex];
-                            foreach (var objective in column)
-                            {
-                                bool startsInThisHour = objective.StartTime.Hour == hour;
-                                bool endsInThisHour = objective.EndTime.HasValue && objective.EndTime.Value.Hour == hour;
-                                bool spansHour = objective.StartTime.Hour < hour &&
-                                                 (objective.EndTime.HasValue ? objective.EndTime.Value.Hour > hour : false);
-
-                                double height;
-                                if (spansHour)
-                                {
-                                    height = 60;
-                                }
-                                else if (startsInThisHour && endsInThisHour)
-                                {
-                                    height = (objective.EndTime.Value - objective.StartTime).TotalMinutes;
-                                }
-                                else if (startsInThisHour)
-                                {
-                                    var minutesInHour = 60 - objective.StartTime.Minute;
-                                    if (objective.EndTime.HasValue && objective.EndTime.Value.Hour > hour)
-                                    {
-                                        height = minutesInHour;
-                                    }
-                                    else
-                                    {
-                                        height = (objective.EndTime.Value - objective.StartTime).TotalMinutes;
-                                    }
-                                }
-                                else if (endsInThisHour)
-                                {
-                                    var endTime = objective.EndTime.Value;
-                                    var startOfHour = new DateTime(endTime.Year, endTime.Month, endTime.Day, hour, 0, 0);
-                                    height = (endTime - startOfHour).TotalMinutes;
-                                }
-                                else
-                                {
-                                    height = 60;
-                                }
-
-                                double offset = startsInThisHour ? objective.StartTime.Minute : 0;
-                                height = Math.Max(height, 30);
-
-                                // Определяем классы для первой и последней части
-                                string partClass = "";
-                                if (startsInThisHour)
-                                {
-                                    partClass = "first-part";
-                                }
-                                else if (endsInThisHour)
-                                {
-                                    partClass = "last-part";
-                                }
-                                else
-                                {
-                                    partClass = "middle-part";
-                                }
-
-                                // Вычисляем позицию колонки с учетом отступов
-                                double leftPosition = (colIndex * columnWidth) + marginPercent;
-                                double rightPosition = ((colIndex + 1) * columnWidth) - marginPercent;
-
-                                <div class="objective-item @(objective.IsCompleted ? "completed" : "upcoming") @partClass"
-                                     data-objective-id="@objective.ObjectiveId"
-                                     data-start-time="@objective.StartTime.ToString("yyyy-MM-ddTHH:mm")"
-                                     data-end-time="@(objective.EndTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")"
-                                     style="height: @(height)px; top: @(offset)px; left: @(leftPosition)%; right: @(100 - rightPosition)%;"
-                                     onclick="showObjectiveDetails(@objective.ObjectiveId)">
-                                    @if (startsInThisHour)
-                                    {
-                                        <div class="objective-header">
-                                            <span class="objective-title">@objective.Title</span>
-                                            @if (!string.IsNullOrEmpty(objective.Description))
-                                            {
-                                                <span class="objective-description"> - @objective.Description</span>
-                                            }
-                                        </div>
-                                        <div class="objective-time">
-                                            @objective.StartTime.ToString("HH:mm") -
-                                            @(objective.EndTime.HasValue ? objective.EndTime.Value.ToString("HH:mm") : "—")
-                                        </div>
-                                        <div class="objective-actions">
-                                            <button type="button" class="btn btn-sm btn-outline-primary edit-objective" data-objective-id="@objective.ObjectiveId">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger delete-objective" data-objective-id="@objective.ObjectiveId">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        }
-                    }
-                </div>
+                <div class="hour-content"></div>
             </div>
+        }
+
+        <!-- Рендерим задачи отдельно -->
+        @{
+            // Получаем все задачи и сортируем их по времени начала
+            var objectives = Model.Objectives
+                .OrderBy(o => o.StartTime)
+                .ToList();
+
+            // Определяем пересекающиеся группы задач
+            var columns = new List<List<Objective>>();
+            foreach (var objective in objectives)
+            {
+                bool placed = false;
+                foreach (var column in columns)
+                {
+                    var lastInColumn = column.Last();
+                    bool intersects = objective.StartTime < (lastInColumn.EndTime ?? lastInColumn.StartTime.AddHours(1));
+                    if (!intersects)
+                    {
+                        column.Add(objective);
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed)
+                {
+                    columns.Add(new List<Objective> { objective });
+                }
+            }
+
+            // Рендерим задачи с учетом колонок
+            int columnCount = columns.Count;
+            double columnWidth = columnCount > 0 ? 100.0 / columnCount : 100.0;
+            double marginPercent = 2.0; // Отступ в процентах (2% с каждой стороны)
+
+            for (int colIndex = 0; colIndex < columns.Count; colIndex++)
+            {
+                var column = columns[colIndex];
+                foreach (var objective in column)
+                {
+                    // Вычисляем позицию и размеры задачи
+                    // Начало и конец в минутах от начала дня
+                    double startMinutes = (objective.StartTime.Hour * 60) + objective.StartTime.Minute;
+                    double endMinutes = objective.EndTime.HasValue
+                        ? (objective.EndTime.Value.Hour * 60) + objective.EndTime.Value.Minute
+                        : startMinutes + 60; // Если EndTime нет, добавляем 1 час
+
+                    // Позиция сверху и высота в пикселях (1 минута = 1px)
+                    double top = startMinutes;
+                    double height = endMinutes - startMinutes;
+                    height = Math.Max(height, 30); // Минимальная высота
+
+                    // Вычисляем позицию колонки с учетом отступов
+                    double leftPosition = (colIndex * columnWidth) + marginPercent;
+                    double rightPosition = ((colIndex + 1) * columnWidth) - marginPercent;
+
+                    <div class="objective-container @(objective.IsCompleted ? "completed" : "upcoming")"
+                         data-objective-id="@objective.ObjectiveId"
+                         data-start-time="@objective.StartTime.ToString("yyyy-MM-ddTHH:mm")"
+                         data-end-time="@(objective.EndTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")"
+                         style="top: @(top)px; height: @(height)px; left: @(leftPosition)%; right: @(100 - rightPosition)%;"
+                         onclick="showObjectiveDetails(@objective.ObjectiveId)">
+                        <div class="objective-content">
+                            <div class="objective-header">
+                                <span class="objective-title">@objective.Title</span>
+                                @if (!string.IsNullOrEmpty(objective.Description))
+                                {
+                                    <span class="objective-description"> - @objective.Description</span>
+                                }
+                            </div>
+                            <div class="objective-time">
+                                @objective.StartTime.ToString("HH:mm") -
+                                @(objective.EndTime.HasValue ? objective.EndTime.Value.ToString("HH:mm") : "—")
+                            </div>
+                            <div class="objective-actions">
+                                <button type="button" class="btn btn-sm btn-outline-primary edit-objective" data-objective-id="@objective.ObjectiveId">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-objective" data-objective-id="@objective.ObjectiveId">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
         }
     </div>
 </div>
@@ -417,6 +373,6 @@
             document.getElementById('addReminderSection').classList.toggle('d-none', !this.checked);
         });
     </script>
-}
-
+    
+    }
 }
