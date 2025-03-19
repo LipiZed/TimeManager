@@ -1,7 +1,17 @@
 ﻿@{
     ViewData["Title"] = "TimeTrack - управляйте своим временем эффективно";
 }
-
+@{
+    var days = new DayOfWeek[] {
+        DayOfWeek.Monday,
+        DayOfWeek.Tuesday,
+        DayOfWeek.Wednesday,
+        DayOfWeek.Thursday,
+        DayOfWeek.Friday,
+        DayOfWeek.Saturday,
+        DayOfWeek.Sunday
+    };
+}
 
 <!-- Подключаем Font Awesome для иконок -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
@@ -52,34 +62,34 @@
             <p>Выберите двень недели для детального планирования задач</p>
         </div>
         <div class="days-grid">
-            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
+            <a class="nav-link day-card" asp-controller="Schedule" asp-action="DayView" asp-route-day="Monday">
                 <h3>ПН</h3>
                 <p>Понедельник</p>
-            </div>
-            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
+            </a>
+            <a class="nav-link day-card" asp-controller="Schedule" asp-action="DayView" asp-route-day="Tuesday">
                 <h3>ВТ</h3>
                 <p>Вторник</p>
-            </div>
-            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
+            </a>
+            <a class="nav-link day-card" asp-controller="Schedule" asp-action="DayView" asp-route-day="Wednesday">
                 <h3>СР</h3>
                 <p>Среда</p>
-            </div>
-            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
+            </a>
+            <a class="nav-link day-card" asp-controller="Schedule" asp-action="DayView" asp-route-day="Thursday">
                 <h3>ЧТ</h3>
                 <p>Четверг</p>
-            </div>
-            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
+            </a>
+            <a class="nav-link day-card" asp-controller="Schedule" asp-action="DayView" asp-route-day="Friday">
                 <h3>ПТ</h3>
                 <p>Пятница</p>
-            </div>
-            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
+            </a>
+            <a class="nav-link day-card" asp-controller="Schedule" asp-action="DayView" asp-route-day="Saturday">
                 <h3>СБ</h3>
                 <p>Суббота</p>
-            </div>
-            <div class="day-card" onclick="location.href='@Url.Action("Index", "Schedule")'">
+            </a>
+            <a class="nav-link day-card" asp-controller="Schedule" asp-action="DayView" asp-route-day="Sunday">
                 <h3>ВС</h3>
                 <p>Воскресенье</p>
-            </div>
+            </a>
         </div>
     </div>
 </section>

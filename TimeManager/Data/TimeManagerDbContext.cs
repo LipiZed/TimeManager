@@ -10,9 +10,10 @@ namespace TimeManager.Data
         public TimeManagerDbContext(DbContextOptions<TimeManagerDbContext> options)
             : base(options)
         {
+            
         }
-
-        // Убираем DbSet<Schedule>
+        
+        
         public DbSet<Objective> Objectives { get; set; }
         public DbSet<Reminder> Reminders { get; set; }
 
