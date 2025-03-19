@@ -98,14 +98,7 @@
                                 @objective.StartTime.ToString("HH:mm") -
                                 @(objective.EndTime.HasValue ? objective.EndTime.Value.ToString("HH:mm") : "—")
                             </div>
-                            <div class="objective-actions">
-                                <button type="button" class="btn btn-sm btn-outline-primary edit-objective" data-objective-id="@objective.ObjectiveId">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger delete-objective" data-objective-id="@objective.ObjectiveId">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
+                            
                         </div>
                     </div>
                 }

@@ -1,18 +1,13 @@
 ﻿@{
     if (ViewData.TryGetValue("ParentLayout", out var parentLayout) && parentLayout !=  null)
     {
-        Layout = parentLayout.ToString();
+        Layout = "~/Views/Shared/_Layout.cshtml";
     }
-    else
-    {
-        //Layout = "/Areas/Identity/Pages/_Layout.cshtml";
-    }
-}
 
+}
 <div class="container">
     <div class="login-container mt-4">
         <h1 class="text-center mb-4">Управление аккаунтом</h1>
-
         <div>
             <h2 class="mb-3">Измените параметры своего аккаунта</h2>
             <hr class="mb-4" />
@@ -38,5 +33,8 @@
 </div>
 
 @section Scripts {
-    @RenderSection("Scripts", required: false)
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
 }
