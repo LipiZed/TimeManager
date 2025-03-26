@@ -82,23 +82,18 @@
 
                     <div class="objective-container @(objective.IsCompleted ? "completed" : "upcoming")"
                          data-objective-id="@objective.ObjectiveId"
-                         data-start-time="@objective.StartTime.ToString("yyyy-MM-ddTHH:mm")"
-                         data-end-time="@(objective.EndTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")"
                          style="top: @(top)px; height: @(height)px; left: @(leftPosition)%; right: @(100 - rightPosition)%;"
                          onclick="showObjectiveDetails(@objective.ObjectiveId)">
                         <div class="objective-content">
-                            <div class="objective-header">
-                                <span class="objective-title">@objective.Title</span>
-                                @if (!string.IsNullOrEmpty(objective.Description))
-                                {
-                                    <span class="objective-description"> - @objective.Description</span>
-                                }
+                            <div class="objective-icon">
+                                <i class="bi @(objective.IsCompleted ? "bi-check-circle" : "bi-calendar-event")"></i>
                             </div>
-                            <div class="objective-time">
-                                @objective.StartTime.ToString("HH:mm") -
-                                @(objective.EndTime.HasValue ? objective.EndTime.Value.ToString("HH:mm") : "—")
+                            <div class="objective-main-info">
+                                <div class="objective-title">@objective.Title</div>
+                                <div class="objective-time">
+                                    @objective.StartTime.ToString("HH:mm") - @(objective.EndTime?.ToString("HH:mm") ?? "—")
+                                </div>
                             </div>
-                            
                         </div>
                     </div>
                 }
