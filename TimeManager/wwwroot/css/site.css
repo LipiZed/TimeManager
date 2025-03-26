@@ -58,6 +58,8 @@ body {
     border-bottom: 1px solid #ddd;
     display: flex;
     align-items: center;
+    /* Очистка потока для дочерних элементов */
+    overflow: visible;
 }
 
 .timeline-hour:last-child {
@@ -84,25 +86,58 @@ body {
 /* Стили для контейнера задачи */
 .objective-container {
     position: absolute;
-    background: linear-gradient(135deg, #e3f2fd 0%, #d1e9ff 100%);
-    border: 1px solid #90caf9;
-    border-radius: 8px;
+    border-radius: 6px;
     box-sizing: border-box;
-    z-index: 1; /* Задачи ниже меток времени */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.3s, transform 0.3s;
-    margin-left: 60px; /* Отступ слева, чтобы не перекрывать метки времени */
+    z-index: 1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    margin-left: 60px;
+    overflow: hidden;
+    min-height: 30px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    border-left: 4px solid;
+    /* Прозрачность фона */
+    background-color: rgba(248, 249, 250, 0.7);
+    /* Эффект "бумаги" с легкой текстурой */
+
+}
+
+.objective-container:not(:hover) {
+    opacity: 1;
 }
 
 .objective-container:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    background-color: #f8f9fa;
+    transform: scale(1.02);
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    opacity: 1 !important;
 }
+
+
 
 /* Стили для содержимого задачи */
 .objective-content {
-    padding: 10px;
-    position: relative;
+    padding: 4px 8px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    opacity: 1;
+    gap: 8px;
+}
+
+.objective-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 64px;
+    background-color: rgba(255,255,255,0.7);
+    font-size: 18px;
 }
 
 .objective-header {
@@ -115,9 +150,21 @@ body {
     text-overflow: ellipsis;
 }
 
+.objective-main-info {
+    flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
 .objective-title {
-    font-weight: bold;
-    font-size: 1rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+
 }
 
 .objective-description {
@@ -129,6 +176,7 @@ body {
     font-size: 0.9em;
     color: #666;
     white-space: nowrap;
+    margin-top: -2px;
     margin-bottom: 4px;
 }
 
@@ -146,15 +194,33 @@ body {
     opacity: 1;
 }
 
-/* Стили для выполненных и предстоящих задач */
+/* Стили для статусов */
 .objective-container.completed {
-    background: linear-gradient(135deg, #e8f5e9 0%, #d4edda 100%);
+    background: linear-gradient(135deg,
+    rgba(232, 245, 233, 0.7) 0%,
+    rgba(212, 237, 218, 0.7) 100%);
     border-left-color: #4CAF50;
 }
 
+
+.objective-container.completed .objective-icon {
+    color: #4CAF50;
+}
+
 .objective-container.upcoming {
-    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+    background: linear-gradient(135deg,
+    rgba(255, 248, 225, 0.7) 0%,
+    rgba(255, 236, 179, 0.7) 100%);
     border-left-color: #FFC107;
+}
+
+.objective-container.upcoming .objective-icon {
+    color: #FFC107;
+}
+
+/* Тултип при наведении */
+.objective-container:hover .objective-tooltip {
+    display: block;
 }
 
 /* Анимация появления */
@@ -169,42 +235,35 @@ body {
 
 /* Адаптивность */
 @media (max-width: 768px) {
-    .timeline-container {
-        position: relative;
-        font-size: 0.9rem;
-    }
-
-    .hour-label {
-        width: 60px;
-        font-weight: bold;
-    }
-
-    .objective-container {
-        margin-left: 60px;
-        width: calc(100% - 60px);
-    }
-
     .objective-content {
-        padding: 8px;
+        gap: 6px;
+        padding: 4px;
+    }
+
+    .objective-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 10px;
     }
 
     .objective-title {
-        font-size: 0.9rem;
-    }
-
-    .objective-description {
         font-size: 0.8rem;
     }
 
     .objective-time {
-        font-size: 0.8rem;
-    }
-
-    .objective-actions {
-        top: 8px;
-        right: 8px;
+        font-size: 0.65rem;
     }
 }
+
+
+
+
+
+
+
+
+
+
 
 :root {
     --primary: #4361ee;
