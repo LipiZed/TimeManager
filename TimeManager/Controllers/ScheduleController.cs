@@ -20,13 +20,11 @@ public class ScheduleController : Controller
         _userManager = userManager;
     }
 
-    // GET: Отображение главной страницы с неделей
     public IActionResult Index()
     {
         return View();
     }
 
-    // GET: Отображение конкретного дня недели
     public async Task<IActionResult> DayView(DayOfWeek day)
     {
         var userId = _userManager.GetUserId(User);
@@ -46,7 +44,6 @@ public class ScheduleController : Controller
         return View(viewModel);
     }
 
-    // POST: Добавление новой задачи
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddObjective(DayOfWeek day, 
@@ -54,10 +51,15 @@ public class ScheduleController : Controller
         string Description, 
         string StartTime, 
         string EndTime,
-        bool AddReminder,
         string? ReminderTime)
     {
         var userId = _userManager.GetUserId(User);
+        var user = await _userManager.FindByIdAsync(userId);
+        if (string.IsNullOrEmpty(user.TelegramId))
+        {
+            ModelState.AddModelError("", "Укажите Telegram ID в профиле, чтобы использовать напоминания.");
+            return RedirectToAction("DayView", new { day });
+        }
 
         var objective = new Objective
         {
@@ -65,28 +67,41 @@ public class ScheduleController : Controller
             WeekDay = day,
             Title = Title,
             Description = Description,
-            StartTime = DateTime.Parse(StartTime), // Без округления
-            EndTime = string.IsNullOrEmpty(EndTime) ? null : DateTime.Parse(EndTime), // Без округления
+            StartTime = DateTime.Parse(StartTime),
+            EndTime = string.IsNullOrEmpty(EndTime) ? null : DateTime.Parse(EndTime),
             IsCompleted = false,
             CreatedAt = DateTime.Now
         };
 
-        if (AddReminder && !string.IsNullOrEmpty(ReminderTime))
-        {
-            objective.Reminders.Add(new Reminder
-            {
-                ReminderTime = DateTime.Parse(ReminderTime),
-                IsSent = false
-            });
-        }
-
+        // Добавляем задачу в контекст и сохраняем, чтобы получить ObjectiveId
         _context.Objectives.Add(objective);
         await _context.SaveChangesAsync();
+
+        // Явно добавляем напоминание, если оно указано
+        if (!string.IsNullOrEmpty(ReminderTime))
+        {
+            try
+            {
+                var reminder = new Reminder
+                {
+                    ObjectiveId = objective.ObjectiveId,
+                    ReminderTime = DateTime.Parse(ReminderTime),
+                    IsSent = false
+                };
+                _context.Reminders.Add(reminder);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                // Логируем ошибку, чтобы понять, что пошло не так
+                Console.WriteLine($"Ошибка при добавлении напоминания: {ex.Message}");
+                throw; // Можно убрать throw в продакшене, чтобы не прерывать выполнение
+            }
+        }
 
         return RedirectToAction("DayView", new { day });
     }
 
-    // GET: Получение данных задачи для редактирования
     [HttpGet]
     public async Task<IActionResult> GetObjective(int objectiveId)
     {
@@ -113,7 +128,6 @@ public class ScheduleController : Controller
         });
     }
 
-    // POST: Редактирование задачи
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditObjective(int ObjectiveId, 
@@ -126,7 +140,8 @@ public class ScheduleController : Controller
         string? ReminderTime)
     {
         var userId = _userManager.GetUserId(User);
-    
+        var user = await _userManager.FindByIdAsync(userId);
+
         var objective = await _context.Objectives
             .Include(o => o.Reminders)
             .FirstOrDefaultAsync(o => o.ObjectiveId == ObjectiveId && o.UserId == userId);
@@ -136,28 +151,45 @@ public class ScheduleController : Controller
             return NotFound();
         }
 
+        if (string.IsNullOrEmpty(user.TelegramId))
+        {
+            ModelState.AddModelError("", "Укажите Telegram ID в профиле, чтобы использовать напоминания.");
+            return RedirectToAction("DayView", new { day });
+        }
+
         objective.Title = Title;
         objective.Description = Description;
-        objective.StartTime = DateTime.Parse(StartTime); // Без округления
-        objective.EndTime = string.IsNullOrEmpty(EndTime) ? null : DateTime.Parse(EndTime); // Без округления
+        objective.StartTime = DateTime.Parse(StartTime);
+        objective.EndTime = string.IsNullOrEmpty(EndTime) ? null : DateTime.Parse(EndTime);
         objective.IsCompleted = IsCompleted;
 
         // Обработка напоминания
         var existingReminder = objective.Reminders.FirstOrDefault();
         if (!string.IsNullOrEmpty(ReminderTime))
         {
-            if (existingReminder == null)
+            try
             {
-                objective.Reminders.Add(new Reminder
+                if (existingReminder == null)
                 {
-                    ReminderTime = DateTime.Parse(ReminderTime),
-                    IsSent = false
-                });
+                    var newReminder = new Reminder
+                    {
+                        ObjectiveId = objective.ObjectiveId,
+                        ReminderTime = DateTime.Parse(ReminderTime),
+                        IsSent = false
+                    };
+                    _context.Reminders.Add(newReminder);
+                }
+                else
+                {
+                    existingReminder.ReminderTime = DateTime.Parse(ReminderTime);
+                    existingReminder.IsSent = false;
+                    _context.Reminders.Update(existingReminder);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                existingReminder.ReminderTime = DateTime.Parse(ReminderTime);
-                existingReminder.IsSent = false;
+                Console.WriteLine($"Ошибка при обновлении напоминания: {ex.Message}");
+                throw;
             }
         }
         else if (existingReminder != null)
@@ -171,7 +203,6 @@ public class ScheduleController : Controller
         return RedirectToAction("DayView", new { day });
     }
 
-    // POST: Удаление задачи
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteObjective(int objectiveId, DayOfWeek day)
@@ -192,7 +223,6 @@ public class ScheduleController : Controller
         return RedirectToAction("DayView", new { day });
     }
 
-    // POST: Отметить задачу как выполненную
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompleteObjective(int objectiveId, DayOfWeek day)
@@ -215,7 +245,6 @@ public class ScheduleController : Controller
     }
 }
 
-// Модель представления для страницы дня
 public class DayViewModel
 {
     public DayOfWeek Day { get; set; }
