@@ -195,7 +195,7 @@ namespace TimeManager.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Objectives", (string)null);
+                    b.ToTable("Objectives");
                 });
 
             modelBuilder.Entity("TimeManager.Models.Reminder", b =>
@@ -219,7 +219,7 @@ namespace TimeManager.Migrations
 
                     b.HasIndex("ObjectiveId");
 
-                    b.ToTable("Reminders", (string)null);
+                    b.ToTable("Reminders");
                 });
 
             modelBuilder.Entity("TimeManager.Models.User", b =>

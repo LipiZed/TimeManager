@@ -16,10 +16,7 @@
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
       <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Services\" />
+      <PackageReference Include="Telegram.Bot" Version="22.5.0-dev.24" />
     </ItemGroup>
 
 </Project>
