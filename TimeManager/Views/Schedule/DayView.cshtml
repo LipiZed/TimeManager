@@ -16,7 +16,6 @@
     </div>
 
     <div class="timeline-container">
-        <!-- Сначала рендерим временные метки -->
         @for (int hour = 0; hour < 24; hour++)
         {
             <div class="timeline-hour" id="hour-@hour">
@@ -25,14 +24,8 @@
             </div>
         }
 
-        <!-- Рендерим задачи отдельно -->
         @{
-            // Получаем все задачи и сортируем их по времени начала
-            var objectives = Model.Objectives
-                .OrderBy(o => o.StartTime)
-                .ToList();
-
-            // Определяем пересекающиеся группы задач
+            var objectives = Model.Objectives.OrderBy(o => o.StartTime).ToList();
             var columns = new List<List<Objective>>();
             foreach (var objective in objectives)
             {
@@ -54,29 +47,21 @@
                 }
             }
 
-            // Рендерим задачи с учетом колонок
             int columnCount = columns.Count;
             double columnWidth = columnCount > 0 ? 100.0 / columnCount : 100.0;
-            double marginPercent = 2.0; // Отступ в процентах (2% с каждой стороны)
+            double marginPercent = 2.0;
 
             for (int colIndex = 0; colIndex < columns.Count; colIndex++)
             {
                 var column = columns[colIndex];
                 foreach (var objective in column)
                 {
-                    // Вычисляем позицию и размеры задачи
-                    // Начало и конец в минутах от начала дня
                     double startMinutes = (objective.StartTime.Hour * 60) + objective.StartTime.Minute;
                     double endMinutes = objective.EndTime.HasValue
                         ? (objective.EndTime.Value.Hour * 60) + objective.EndTime.Value.Minute
-                        : startMinutes + 60; // Если EndTime нет, добавляем 1 час
-
-                    // Позиция сверху и высота в пикселях (1 минута = 1px)
+                        : startMinutes + 60;
                     double top = startMinutes;
-                    double height = endMinutes - startMinutes;
-                    height = Math.Max(height, 30); // Минимальная высота
-
-                    // Вычисляем позицию колонки с учетом отступов
+                    double height = Math.Max(endMinutes - startMinutes, 30);
                     double leftPosition = (colIndex * columnWidth) + marginPercent;
                     double rightPosition = ((colIndex + 1) * columnWidth) - marginPercent;
 
@@ -132,7 +117,8 @@
                         </div>
                     </div>
                     <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="addReminder" name="AddReminder">
+                        <input type="hidden" name="AddReminder" value="false" />
+                        <input class="form-check-input" type="checkbox" id="addReminder" name="AddReminder" value="true" />
                         <label class="form-check-label" for="addReminder">Добавить напоминание</label>
                     </div>
                     <div id="addReminderSection" class="mb-3 d-none">
@@ -163,7 +149,7 @@
                 <div id="objectiveDetailsStatus" class="mb-3">
                     <span class="badge" id="objectiveStatusBadge"></span>
                 </div>
-                <div id="objectiveDetailsReminder" class="mb-3 d-none">
+                <div id="objectiveDetailsReminder" class="mb-3">
                     <h6>Напоминание:</h6>
                     <span id="reminderTime"></span>
                 </div>
@@ -210,8 +196,17 @@
                         </div>
                     </div>
                     <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="editIsCompleted" name="IsCompleted">
+                        <input class="form-check-input" type="checkbox" id="editIsCompleted" name="IsCompleted" />
                         <label class="form-check-label" for="editIsCompleted">Задача выполнена</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="hidden" name="AddReminder" value="false" />
+                        <input class="form-check-input" type="checkbox" id="editAddReminder" name="AddReminder" value="true" />
+                        <label class="form-check-label" for="editAddReminder">Добавить/изменить напоминание</label>
+                    </div>
+                    <div id="editReminderSection" class="mb-3 d-none">
+                        <label for="editReminderTime" class="form-label">Время напоминания:</label>
+                        <input type="datetime-local" class="form-control" id="editReminderTime" name="ReminderTime" />
                     </div>
                 </form>
             </div>
@@ -264,7 +259,6 @@
     <script>
         let currentObjectiveId = null;
 
-        // Показать детали задачи
         async function showObjectiveDetails(objectiveId) {
             currentObjectiveId = objectiveId;
             const response = await fetch(`/Schedule/GetObjective?objectiveId=${objectiveId}`);
@@ -290,7 +284,6 @@
             new bootstrap.Modal(document.getElementById('objectiveDetailsModal')).show();
         }
 
-        // Показать модал редактирования
         async function showEditModal(objectiveId) {
             currentObjectiveId = objectiveId;
             const response = await fetch(`/Schedule/GetObjective?objectiveId=${objectiveId}`);
@@ -302,18 +295,19 @@
             document.getElementById('editStartTime').value = data.startTime;
             document.getElementById('editEndTime').value = data.endTime || '';
             document.getElementById('editIsCompleted').checked = data.isCompleted;
+            document.getElementById('editAddReminder').checked = !!data.reminderTime;
+            document.getElementById('editReminderTime').value = data.reminderTime || '';
+            document.getElementById('editReminderSection').classList.toggle('d-none', !data.reminderTime);
 
             new bootstrap.Modal(document.getElementById('editObjectiveModal')).show();
         }
 
-        // Показать модал удаления
         function showDeleteModal(objectiveId, title) {
             currentObjectiveId = objectiveId;
             document.getElementById('deleteObjectiveTitle').textContent = title;
             new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
         }
 
-        // Переходы из модала деталей
         function showEditFromDetails() {
             document.getElementById('objectiveDetailsModal').querySelector('.btn-close').click();
             showEditModal(currentObjectiveId);
@@ -325,12 +319,10 @@
             showDeleteModal(currentObjectiveId, title);
         }
 
-        // Отправка формы
         function submitForm(formId) {
             document.getElementById(formId).submit();
         }
 
-        // Завершение задачи
         async function completeObjective() {
             await fetch(`/Schedule/CompleteObjective`, {
                 method: 'POST',
@@ -343,7 +335,6 @@
             location.reload();
         }
 
-        // Подтверждение удаления
         document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
             await fetch(`/Schedule/DeleteObjective`, {
                 method: 'POST',
@@ -356,11 +347,12 @@
             location.reload();
         });
 
-        // Показ/скрытие поля напоминания
-        document.getElementById('addReminder').addEventListener('change', function() {
+        document.getElementById('addReminder').addEventListener('change', function () {
             document.getElementById('addReminderSection').classList.toggle('d-none', !this.checked);
         });
+
+        document.getElementById('editAddReminder').addEventListener('change', function () {
+            document.getElementById('editReminderSection').classList.toggle('d-none', !this.checked);
+        });
     </script>
-    
-    }
 }
