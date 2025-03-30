@@ -96,11 +96,12 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form asp-action="AddObjective" method="post" id="addObjectiveForm">
+                <form asp-action="AddObjective" method="post" id="addObjectiveForm" onsubmit="return validateForm('addObjectiveForm')">
                     <input type="hidden" name="day" value="@Model.Day" />
                     <div class="mb-3">
                         <label for="addTitle" class="form-label">Название:</label>
                         <input type="text" class="form-control" id="addTitle" name="Title" required />
+                        <div class="invalid-feedback">Пожалуйста, введите название задачи</div>
                     </div>
                     <div class="mb-3">
                         <label for="addDescription" class="form-label">Описание:</label>
@@ -110,10 +111,12 @@
                         <div class="col-md-6 mb-3">
                             <label for="addStartTime" class="form-label">Время начала:</label>
                             <input type="datetime-local" class="form-control" id="addStartTime" name="StartTime" required />
+                            <div class="invalid-feedback">Пожалуйста, выберите время начала</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="addEndTime" class="form-label">Время окончания:</label>
                             <input type="datetime-local" class="form-control" id="addEndTime" name="EndTime" />
+                            <div class="invalid-feedback">Время окончания должно быть позже времени начала</div>
                         </div>
                     </div>
                     <div class="form-check mb-3">
@@ -124,6 +127,7 @@
                     <div id="addReminderSection" class="mb-3 d-none">
                         <label for="addReminderTime" class="form-label">Время напоминания:</label>
                         <input type="datetime-local" class="form-control" id="addReminderTime" name="ReminderTime" />
+                        <div class="invalid-feedback">Время напоминания должно быть раньше времени начала задачи</div>
                     </div>
                 </form>
             </div>
@@ -174,12 +178,13 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form asp-action="EditObjective" method="post" id="editObjectiveForm">
+                <form asp-action="EditObjective" method="post" id="editObjectiveForm" onsubmit="return validateForm('editObjectiveForm')">
                     <input type="hidden" name="ObjectiveId" id="editObjectiveId" />
                     <input type="hidden" name="day" value="@Model.Day" />
                     <div class="mb-3">
                         <label for="editTitle" class="form-label">Название:</label>
                         <input type="text" class="form-control" id="editTitle" name="Title" required />
+                        <div class="invalid-feedback">Пожалуйста, введите название задачи</div>
                     </div>
                     <div class="mb-3">
                         <label for="editDescription" class="form-label">Описание:</label>
@@ -189,10 +194,12 @@
                         <div class="col-md-6 mb-3">
                             <label for="editStartTime" class="form-label">Время начала:</label>
                             <input type="datetime-local" class="form-control" id="editStartTime" name="StartTime" required />
+                            <div class="invalid-feedback">Пожалуйста, выберите время начала</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="editEndTime" class="form-label">Время окончания:</label>
                             <input type="datetime-local" class="form-control" id="editEndTime" name="EndTime" />
+                            <div class="invalid-feedback">Время окончания должно быть позже времени начала</div>
                         </div>
                     </div>
                     <div class="form-check mb-3">
@@ -207,6 +214,7 @@
                     <div id="editReminderSection" class="mb-3 d-none">
                         <label for="editReminderTime" class="form-label">Время напоминания:</label>
                         <input type="datetime-local" class="form-control" id="editReminderTime" name="ReminderTime" />
+                        <div class="invalid-feedback">Время напоминания должно быть раньше времени начала задачи</div>
                     </div>
                 </form>
             </div>
@@ -258,6 +266,149 @@
 @section Scripts {
     <script>
         let currentObjectiveId = null;
+
+        // Добавим эту функцию в JavaScript для отображения названий дней недели
+        // В функцию validateForm добавим проверку соответствия дня недели
+        function validateForm(formId) {
+            const form = document.getElementById(formId);
+            const formElements = form.elements;
+            let isValid = true;
+
+            // Текущий день недели страницы
+            const currentPageDay = @((int)Model.Day);
+
+            // Сброс предыдущих ошибок
+            const invalidFields = form.querySelectorAll('.is-invalid');
+            invalidFields.forEach(field => field.classList.remove('is-invalid'));
+
+            // Проверка названия
+            const titleInput = formId === 'addObjectiveForm' ? formElements.Title : document.getElementById('editTitle');
+            if (!titleInput.value.trim()) {
+                titleInput.classList.add('is-invalid');
+                isValid = false;
+            }
+
+            // Обработка пустого описания - заменяем пустое описание на пробел
+            const descriptionInput = formId === 'addObjectiveForm' ?
+                formElements.Description : document.getElementById('editDescription');
+            if (!descriptionInput.value.trim()) {
+                descriptionInput.value = " ";
+            }
+
+            // Проверка времени начала
+            const startTimeInput = formId === 'addObjectiveForm' ?
+                formElements.StartTime : document.getElementById('editStartTime');
+            if (!startTimeInput.value) {
+                startTimeInput.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                // Проверка совпадения дня недели
+                const selectedDate = new Date(startTimeInput.value);
+                const selectedDay = selectedDate.getDay();
+
+                // Преобразование из JS-формата (вс=0, пн=1) в ваш формат (пн=0, вт=1)
+                // Если selectedDay=0 (воскресенье), то adjustedSelectedDay=6
+                // Если selectedDay=1-6 (пн-сб), то adjustedSelectedDay=selectedDay-1 (0-5)
+                const adjustedSelectedDay = selectedDay === 0 ? 6 : selectedDay - 1;
+
+                if (adjustedSelectedDay !== currentPageDay) {
+                    startTimeInput.classList.add('is-invalid');
+                    // Добавляем собственное сообщение об ошибке
+                    const dayError = document.createElement('div');
+                    dayError.className = 'invalid-feedback';
+                    dayError.textContent = `Выбрана дата для "${GetRussianDayName(adjustedSelectedDay)}", но вы находитесь на странице "${GetRussianDayName(currentPageDay)}"`;
+
+                    // Удаляем предыдущее сообщение об ошибке, если оно есть
+                    const prevDayError = startTimeInput.parentNode.querySelector('.invalid-feedback-day');
+                    if (prevDayError) {
+                        prevDayError.remove();
+                    }
+
+                    dayError.classList.add('invalid-feedback-day');
+                    startTimeInput.parentNode.appendChild(dayError);
+                    isValid = false;
+                }
+            }
+
+            // Проверка времени окончания, если указано
+            const endTimeInput = formId === 'addObjectiveForm' ?
+                formElements.EndTime : document.getElementById('editEndTime');
+            if (endTimeInput.value) {
+                const startTime = new Date(startTimeInput.value);
+                const endTime = new Date(endTimeInput.value);
+
+                if (endTime <= startTime) {
+                    endTimeInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+
+                // Проверка совпадения дня недели для времени окончания
+                const selectedEndDay = endTime.getDay();
+                const adjustedSelectedEndDay = selectedEndDay === 0 ? 6 : selectedEndDay - 1;
+
+                if (adjustedSelectedEndDay !== currentPageDay) {
+                    endTimeInput.classList.add('is-invalid');
+                    // Добавляем собственное сообщение об ошибке
+                    const dayError = document.createElement('div');
+                    dayError.className = 'invalid-feedback';
+                    dayError.textContent = `Выбрана дата окончания для "${GetRussianDayName(adjustedSelectedEndDay)}", но вы находитесь на странице "${GetRussianDayName(currentPageDay)}"`;
+
+                    // Удаляем предыдущее сообщение об ошибке, если оно есть
+                    const prevDayError = endTimeInput.parentNode.querySelector('.invalid-feedback-day');
+                    if (prevDayError) {
+                        prevDayError.remove();
+                    }
+
+                    dayError.classList.add('invalid-feedback-day');
+                    endTimeInput.parentNode.appendChild(dayError);
+                    isValid = false;
+                }
+            }
+
+            // Проверка времени напоминания, если выбрано
+            const reminderCheckbox = formId === 'addObjectiveForm' ?
+                formElements.AddReminder : document.getElementById('editAddReminder');
+            if (reminderCheckbox.checked) {
+                const reminderTimeInput = formId === 'addObjectiveForm' ?
+                    formElements.ReminderTime : document.getElementById('editReminderTime');
+                if (!reminderTimeInput.value) {
+                    reminderTimeInput.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    const startTime = new Date(startTimeInput.value);
+                    const reminderTime = new Date(reminderTimeInput.value);
+
+                    if (reminderTime >= startTime) {
+                        reminderTimeInput.classList.add('is-invalid');
+                        isValid = false;
+                    }
+                }
+            }
+
+            return isValid;
+        }
+
+        // Функция для получения русских названий дней недели в JavaScript
+        function GetRussianDayName(dayIndex) {
+            // dayIndex - принимает значения от 0 до 6, где 0 - понедельник, 6 - воскресенье
+            const daysRussian = [
+                'Понедельник',   // 0
+                'Вторник',       // 1
+                'Среда',         // 2
+                'Четверг',       // 3
+                'Пятница',       // 4
+                'Суббота',       // 5
+                'Воскресенье'    // 6
+            ];
+
+            return daysRussian[dayIndex] || 'Неизвестный день';
+        }
+
+        function submitForm(formId) {
+            if (validateForm(formId)) {
+                document.getElementById(formId).submit();
+            }
+        }
 
         async function showObjectiveDetails(objectiveId) {
             currentObjectiveId = objectiveId;
@@ -319,10 +470,6 @@
             showDeleteModal(currentObjectiveId, title);
         }
 
-        function submitForm(formId) {
-            document.getElementById(formId).submit();
-        }
-
         async function completeObjective() {
             await fetch(`/Schedule/CompleteObjective`, {
                 method: 'POST',
@@ -349,10 +496,16 @@
 
         document.getElementById('addReminder').addEventListener('change', function () {
             document.getElementById('addReminderSection').classList.toggle('d-none', !this.checked);
+            if (!this.checked) {
+                document.getElementById('addReminderTime').value = '';
+            }
         });
 
         document.getElementById('editAddReminder').addEventListener('change', function () {
             document.getElementById('editReminderSection').classList.toggle('d-none', !this.checked);
+            if (!this.checked) {
+                document.getElementById('editReminderTime').value = '';
+            }
         });
     </script>
 }
