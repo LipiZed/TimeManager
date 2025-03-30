@@ -23,9 +23,9 @@
         <h1>Управляйте своим временем эффективно</h1>
         <p>TimeTrack — современный инструмент для планирования задач и повышения продуктивности. Организуйте свою неделю и получайте уведомления через Telegram.</p>
         <div class="cta-buttons">
-            <button class="btn btn-primary cta-btn">Начать бесплатно</button>
+            <a class="btn btn-primary cta-btn" asp-area="Identity" asp-page="/Account/Register">Начать бесплатно</a>
         </div>
-        <img src="/api/placeholder/800/400" alt="TimeTrack dashboard preview" style="max-width: 100%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);" />
+        <img src="https://static.vecteezy.com/system/resources/thumbnails/019/873/851/small_2x/clock-icon-transparent-free-icon-free-png.png" alt="TimeTrack dashboard preview" style="max-width: 15%;" />
     </div>
 </section>
 
@@ -99,9 +99,9 @@
         <div class="telegram-content">
             <h2>Не пропускайте важные задачи</h2>
             <p>Привяжите свой аккаунт Telegram и получайте своевременные уведомления о предстоящих задачах. Больше не нужно беспокоиться о том, что вы что-то забудете!</p>
-            <button class="btn" style="background-color: white; color: var(--primary);">
+            <a class="btn" style="background-color: white; color: var(--primary);" asp-area="Identity" asp-page="/Account/Manage/Index">
                 <i class="fab fa-telegram-plane"></i> Привязать Telegram
-            </button>
+            </a>
         </div>
     </div>
 </section>
