@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.IdentityModel.Tokens;
 using TimeManager.Data;
 using TimeManager.Models;
 
@@ -145,7 +146,8 @@ public class ScheduleController : Controller
         var objective = await _context.Objectives
             .Include(o => o.Reminders)
             .FirstOrDefaultAsync(o => o.ObjectiveId == ObjectiveId && o.UserId == userId);
-
+        
+        
         if (objective == null)
         {
             return NotFound();
@@ -156,7 +158,10 @@ public class ScheduleController : Controller
             ModelState.AddModelError("", "Укажите Telegram ID в профиле, чтобы использовать напоминания.");
             return RedirectToAction("DayView", new { day });
         }
-
+        if (Description.IsNullOrEmpty())
+        {
+            Description = " ";
+        }
         objective.Title = Title;
         objective.Description = Description;
         objective.StartTime = DateTime.Parse(StartTime);
