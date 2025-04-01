@@ -272,20 +272,28 @@
         function validateForm(formId) {
             const form = document.getElementById(formId);
             const formElements = form.elements;
-            let isValid = true;
+
+            // Важно: отключаем стандартную HTML5 валидацию формы
+            form.noValidate = true;
 
             // Текущий день недели страницы
-            const currentPageDay = @((int)Model.Day);
+            const currentPageDay = @((int)Model.Day - 1);
 
             // Сброс предыдущих ошибок
             const invalidFields = form.querySelectorAll('.is-invalid');
             invalidFields.forEach(field => field.classList.remove('is-invalid'));
 
+            // Удаляем все дополнительные сообщения об ошибках
+            const errorMessages = form.querySelectorAll('.invalid-feedback-custom');
+            errorMessages.forEach(msg => msg.remove());
+
             // Проверка названия
             const titleInput = formId === 'addObjectiveForm' ? formElements.Title : document.getElementById('editTitle');
             if (!titleInput.value.trim()) {
                 titleInput.classList.add('is-invalid');
-                isValid = false;
+                const errorMsg = titleInput.parentNode.querySelector('.invalid-feedback');
+                if (errorMsg) errorMsg.style.display = 'block';
+                return false;
             }
 
             // Обработка пустого описания - заменяем пустое описание на пробел
@@ -298,51 +306,46 @@
             // Проверка времени начала
             const startTimeInput = formId === 'addObjectiveForm' ?
                 formElements.StartTime : document.getElementById('editStartTime');
+
+            // Скрываем стандартное сообщение об ошибке
+            const standardStartTimeError = startTimeInput.parentNode.querySelector('.invalid-feedback');
+            if (standardStartTimeError) standardStartTimeError.style.display = 'none';
+
             if (!startTimeInput.value) {
                 startTimeInput.classList.add('is-invalid');
-                isValid = false;
-            } else {
-                // Проверка совпадения дня недели
-                const selectedDate = new Date(startTimeInput.value);
-                const selectedDay = selectedDate.getDay();
+                // Показываем стандартное сообщение
+                if (standardStartTimeError) standardStartTimeError.style.display = 'block';
+                return false;
+            }
 
-                // Преобразование из JS-формата (вс=0, пн=1) в ваш формат (пн=0, вт=1)
-                // Если selectedDay=0 (воскресенье), то adjustedSelectedDay=6
-                // Если selectedDay=1-6 (пн-сб), то adjustedSelectedDay=selectedDay-1 (0-5)
-                const adjustedSelectedDay = selectedDay === 0 ? 6 : selectedDay - 1;
+            // Проверка совпадения дня недели для времени начала
+            const selectedDate = new Date(startTimeInput.value);
+            const selectedDay = selectedDate.getDay();
+            // Преобразование из JS-формата (вс=0, пн=1) в ваш формат (пн=0, вт=1)
+            const adjustedSelectedDay = selectedDay === 0 ? 6 : selectedDay - 1;
 
-                if (adjustedSelectedDay !== currentPageDay) {
-                    startTimeInput.classList.add('is-invalid');
-                    // Добавляем собственное сообщение об ошибке
-                    const dayError = document.createElement('div');
-                    dayError.className = 'invalid-feedback';
-                    dayError.textContent = `Выбрана дата для "${GetRussianDayName(adjustedSelectedDay)}", но вы находитесь на странице "${GetRussianDayName(currentPageDay)}"`;
-
-                    // Удаляем предыдущее сообщение об ошибке, если оно есть
-                    const prevDayError = startTimeInput.parentNode.querySelector('.invalid-feedback-day');
-                    if (prevDayError) {
-                        prevDayError.remove();
-                    }
-
-                    dayError.classList.add('invalid-feedback-day');
-                    startTimeInput.parentNode.appendChild(dayError);
-                    isValid = false;
-                }
+            if (adjustedSelectedDay !== currentPageDay) {
+                startTimeInput.classList.add('is-invalid');
+                // Добавляем собственное сообщение об ошибке
+                const dayError = document.createElement('div');
+                dayError.className = 'invalid-feedback invalid-feedback-custom';
+                dayError.textContent = `Выбрана дата для "${GetRussianDayName(adjustedSelectedDay)}", но вы находитесь на странице "${GetRussianDayName(currentPageDay)}"`;
+                dayError.style.display = 'block';
+                startTimeInput.parentNode.appendChild(dayError);
+                return false;
             }
 
             // Проверка времени окончания, если указано
             const endTimeInput = formId === 'addObjectiveForm' ?
                 formElements.EndTime : document.getElementById('editEndTime');
+
+            // Скрываем стандартное сообщение об ошибке
+            const standardEndTimeError = endTimeInput.parentNode.querySelector('.invalid-feedback');
+            if (standardEndTimeError) standardEndTimeError.style.display = 'none';
+
             if (endTimeInput.value) {
-                const startTime = new Date(startTimeInput.value);
-                const endTime = new Date(endTimeInput.value);
-
-                if (endTime <= startTime) {
-                    endTimeInput.classList.add('is-invalid');
-                    isValid = false;
-                }
-
                 // Проверка совпадения дня недели для времени окончания
+                const endTime = new Date(endTimeInput.value);
                 const selectedEndDay = endTime.getDay();
                 const adjustedSelectedEndDay = selectedEndDay === 0 ? 6 : selectedEndDay - 1;
 
@@ -350,42 +353,62 @@
                     endTimeInput.classList.add('is-invalid');
                     // Добавляем собственное сообщение об ошибке
                     const dayError = document.createElement('div');
-                    dayError.className = 'invalid-feedback';
+                    dayError.className = 'invalid-feedback invalid-feedback-custom';
                     dayError.textContent = `Выбрана дата окончания для "${GetRussianDayName(adjustedSelectedEndDay)}", но вы находитесь на странице "${GetRussianDayName(currentPageDay)}"`;
-
-                    // Удаляем предыдущее сообщение об ошибке, если оно есть
-                    const prevDayError = endTimeInput.parentNode.querySelector('.invalid-feedback-day');
-                    if (prevDayError) {
-                        prevDayError.remove();
-                    }
-
-                    dayError.classList.add('invalid-feedback-day');
+                    dayError.style.display = 'block';
                     endTimeInput.parentNode.appendChild(dayError);
-                    isValid = false;
+                    return false;
+                }
+
+                // Только теперь проверяем логику времени (конец должен быть после начала)
+                const startTime = new Date(startTimeInput.value);
+                if (endTime <= startTime) {
+                    endTimeInput.classList.add('is-invalid');
+                    // Стандартное сообщение об ошибке не нужно, но можно добавить пользовательское
+                    const timeError = document.createElement('div');
+                    timeError.className = 'invalid-feedback invalid-feedback-custom';
+                    timeError.textContent = 'Время окончания должно быть позже времени начала';
+                    timeError.style.display = 'block';
+                    endTimeInput.parentNode.appendChild(timeError);
+                    return false;
                 }
             }
 
             // Проверка времени напоминания, если выбрано
             const reminderCheckbox = formId === 'addObjectiveForm' ?
                 formElements.AddReminder : document.getElementById('editAddReminder');
+
             if (reminderCheckbox.checked) {
                 const reminderTimeInput = formId === 'addObjectiveForm' ?
                     formElements.ReminderTime : document.getElementById('editReminderTime');
+
+                // Скрываем стандартное сообщение об ошибке
+                const standardReminderError = reminderTimeInput.parentNode.querySelector('.invalid-feedback');
+                if (standardReminderError) standardReminderError.style.display = 'none';
+
                 if (!reminderTimeInput.value) {
                     reminderTimeInput.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    const startTime = new Date(startTimeInput.value);
-                    const reminderTime = new Date(reminderTimeInput.value);
+                    // Показываем стандартное сообщение
+                    if (standardReminderError) standardReminderError.style.display = 'block';
+                    return false;
+                }
 
-                    if (reminderTime >= startTime) {
-                        reminderTimeInput.classList.add('is-invalid');
-                        isValid = false;
-                    }
+                const startTime = new Date(startTimeInput.value);
+                const reminderTime = new Date(reminderTimeInput.value);
+
+                if (reminderTime >= startTime) {
+                    reminderTimeInput.classList.add('is-invalid');
+                    // Добавляем пользовательское сообщение
+                    const reminderError = document.createElement('div');
+                    reminderError.className = 'invalid-feedback invalid-feedback-custom';
+                    reminderError.textContent = 'Время напоминания должно быть раньше времени начала задачи';
+                    reminderError.style.display = 'block';
+                    reminderTimeInput.parentNode.appendChild(reminderError);
+                    return false;
                 }
             }
 
-            return isValid;
+            return true;
         }
 
         // Функция для получения русских названий дней недели в JavaScript

@@ -77,7 +77,10 @@ public class ScheduleController : Controller
         // Добавляем задачу в контекст и сохраняем, чтобы получить ObjectiveId
         _context.Objectives.Add(objective);
         await _context.SaveChangesAsync();
-
+        if (Description.IsNullOrEmpty())
+        {
+            Description = " ";
+        }
         // Явно добавляем напоминание, если оно указано
         if (!string.IsNullOrEmpty(ReminderTime))
         {
