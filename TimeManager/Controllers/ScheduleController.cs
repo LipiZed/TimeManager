@@ -62,34 +62,68 @@ public class ScheduleController : Controller
             return RedirectToAction("DayView", new { day });
         }
 
+        // Parse time value (hours and minutes only)
+        var startTimeValue = TimeSpan.Parse(StartTime);
+        DateTime startDateTime = DateTime.Today.Add(startTimeValue);
+        
+        // Set the day of week to the currently selected day
+        int daysToAdd = ((int)day - (int)startDateTime.DayOfWeek + 7) % 7;
+        startDateTime = startDateTime.AddDays(daysToAdd);
+
+        // Parse end time if provided
+        DateTime? endDateTime = null;
+        if (!string.IsNullOrEmpty(EndTime))
+        {
+            var endTimeValue = TimeSpan.Parse(EndTime);
+            endDateTime = DateTime.Today.Add(endTimeValue);
+            
+            // Set the day of week to the currently selected day
+            endDateTime = endDateTime.Value.AddDays(daysToAdd);
+            
+            // If end time is earlier than start time, assume it's the next day
+            if (endDateTime < startDateTime)
+            {
+                endDateTime = endDateTime.Value.AddDays(1);
+            }
+        }
+
         var objective = new Objective
         {
             UserId = userId,
             WeekDay = day,
             Title = Title,
-            Description = Description,
-            StartTime = DateTime.Parse(StartTime),
-            EndTime = string.IsNullOrEmpty(EndTime) ? null : DateTime.Parse(EndTime),
+            Description = Description ?? " ",
+            StartTime = startDateTime,
+            EndTime = endDateTime,
             IsCompleted = false,
             CreatedAt = DateTime.Now
         };
 
-        // Добавляем задачу в контекст и сохраняем, чтобы получить ObjectiveId
+        // Add task to context and save to get ObjectiveId
         _context.Objectives.Add(objective);
         await _context.SaveChangesAsync();
-        if (Description.IsNullOrEmpty())
-        {
-            Description = " ";
-        }
-        // Явно добавляем напоминание, если оно указано
+
+        // Add reminder if specified
         if (!string.IsNullOrEmpty(ReminderTime))
         {
             try
             {
+                var reminderTimeValue = TimeSpan.Parse(ReminderTime);
+                DateTime reminderDateTime = DateTime.Today.Add(reminderTimeValue);
+                
+                // Set the day of week to match the objective's day
+                reminderDateTime = reminderDateTime.AddDays(daysToAdd);
+                
+                // If reminder time is after start time, assume it's for the previous day
+                if (reminderDateTime > startDateTime)
+                {
+                    reminderDateTime = reminderDateTime.AddDays(-1);
+                }
+                
                 var reminder = new Reminder
                 {
                     ObjectiveId = objective.ObjectiveId,
-                    ReminderTime = DateTime.Parse(ReminderTime),
+                    ReminderTime = reminderDateTime,
                     IsSent = false
                 };
                 _context.Reminders.Add(reminder);
@@ -97,9 +131,7 @@ public class ScheduleController : Controller
             }
             catch (Exception ex)
             {
-                // Логируем ошибку, чтобы понять, что пошло не так
                 Console.WriteLine($"Ошибка при добавлении напоминания: {ex.Message}");
-                throw; // Можно убрать throw в продакшене, чтобы не прерывать выполнение
             }
         }
 
@@ -125,10 +157,10 @@ public class ScheduleController : Controller
             objectiveId = objective.ObjectiveId,
             title = objective.Title,
             description = objective.Description,
-            startTime = objective.StartTime.ToString("yyyy-MM-ddTHH:mm"),
-            endTime = objective.EndTime?.ToString("yyyy-MM-ddTHH:mm"),
+            startTime = objective.StartTime.ToString("HH:mm"),
+            endTime = objective.EndTime?.ToString("HH:mm"),
             isCompleted = objective.IsCompleted,
-            reminderTime = objective.Reminders.FirstOrDefault()?.ReminderTime.ToString("yyyy-MM-ddTHH:mm")
+            reminderTime = objective.Reminders.FirstOrDefault()?.ReminderTime.ToString("HH:mm")
         });
     }
 
@@ -150,7 +182,6 @@ public class ScheduleController : Controller
             .Include(o => o.Reminders)
             .FirstOrDefaultAsync(o => o.ObjectiveId == ObjectiveId && o.UserId == userId);
         
-        
         if (objective == null)
         {
             return NotFound();
@@ -161,35 +192,69 @@ public class ScheduleController : Controller
             ModelState.AddModelError("", "Укажите Telegram ID в профиле, чтобы использовать напоминания.");
             return RedirectToAction("DayView", new { day });
         }
-        if (Description.IsNullOrEmpty())
+
+        // Parse time values (hours and minutes only)
+        var startTimeValue = TimeSpan.Parse(StartTime);
+        DateTime startDateTime = DateTime.Today.Add(startTimeValue);
+        
+        // Set the day of week to the currently selected day
+        int daysToAdd = ((int)day - (int)startDateTime.DayOfWeek + 7) % 7;
+        startDateTime = startDateTime.AddDays(daysToAdd);
+
+        // Parse end time if provided
+        DateTime? endDateTime = null;
+        if (!string.IsNullOrEmpty(EndTime))
         {
-            Description = " ";
+            var endTimeValue = TimeSpan.Parse(EndTime);
+            endDateTime = DateTime.Today.Add(endTimeValue);
+            
+            // Set the day of week to the currently selected day
+            endDateTime = endDateTime.Value.AddDays(daysToAdd);
+            
+            // If end time is earlier than start time, assume it's the next day
+            if (endDateTime < startDateTime)
+            {
+                endDateTime = endDateTime.Value.AddDays(1);
+            }
         }
+
         objective.Title = Title;
-        objective.Description = Description;
-        objective.StartTime = DateTime.Parse(StartTime);
-        objective.EndTime = string.IsNullOrEmpty(EndTime) ? null : DateTime.Parse(EndTime);
+        objective.Description = Description ?? " ";
+        objective.StartTime = startDateTime;
+        objective.EndTime = endDateTime;
         objective.IsCompleted = IsCompleted;
 
-        // Обработка напоминания
+        // Handle reminder
         var existingReminder = objective.Reminders.FirstOrDefault();
         if (!string.IsNullOrEmpty(ReminderTime))
         {
             try
             {
+                var reminderTimeValue = TimeSpan.Parse(ReminderTime);
+                DateTime reminderDateTime = DateTime.Today.Add(reminderTimeValue);
+                
+                // Set the day of week to match the objective's day
+                reminderDateTime = reminderDateTime.AddDays(daysToAdd);
+                
+                // If reminder time is after start time, assume it's for the previous day
+                if (reminderDateTime > startDateTime)
+                {
+                    reminderDateTime = reminderDateTime.AddDays(-1);
+                }
+                
                 if (existingReminder == null)
                 {
                     var newReminder = new Reminder
                     {
                         ObjectiveId = objective.ObjectiveId,
-                        ReminderTime = DateTime.Parse(ReminderTime),
+                        ReminderTime = reminderDateTime,
                         IsSent = false
                     };
                     _context.Reminders.Add(newReminder);
                 }
                 else
                 {
-                    existingReminder.ReminderTime = DateTime.Parse(ReminderTime);
+                    existingReminder.ReminderTime = reminderDateTime;
                     existingReminder.IsSent = false;
                     _context.Reminders.Update(existingReminder);
                 }

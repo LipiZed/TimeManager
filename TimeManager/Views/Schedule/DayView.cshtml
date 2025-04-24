@@ -25,49 +25,46 @@
         }
 
         @{
-            var objectives = Model.Objectives.OrderBy(o => o.StartTime).ToList();
-            var columns = new List<List<Objective>>();
-            foreach (var objective in objectives)
+            // Группировка задач по времени (с точностью до 30 минут)
+            var taskGroups = new Dictionary<string, List<Objective>>();
+
+            foreach (var objective in Model.Objectives.OrderBy(o => o.StartTime))
             {
-                bool placed = false;
-                foreach (var column in columns)
+                // Ключ группировки - час и округленные минуты (до 30)
+                string timeKey = $"{objective.StartTime.Hour}:{(objective.StartTime.Minute / 30) * 30}";
+
+                if (!taskGroups.ContainsKey(timeKey))
                 {
-                    var lastInColumn = column.Last();
-                    bool intersects = objective.StartTime < (lastInColumn.EndTime ?? lastInColumn.StartTime.AddHours(1));
-                    if (!intersects)
-                    {
-                        column.Add(objective);
-                        placed = true;
-                        break;
-                    }
+                    taskGroups[timeKey] = new List<Objective>();
                 }
-                if (!placed)
-                {
-                    columns.Add(new List<Objective> { objective });
-                }
+
+                taskGroups[timeKey].Add(objective);
             }
 
-            int columnCount = columns.Count;
-            double columnWidth = columnCount > 0 ? 100.0 / columnCount : 100.0;
-            double marginPercent = 2.0;
-
-            for (int colIndex = 0; colIndex < columns.Count; colIndex++)
+            // Отображаем все задачи по группам
+            foreach (var group in taskGroups)
             {
-                var column = columns[colIndex];
-                foreach (var objective in column)
+                string[] timeParts = group.Key.Split(':');
+                int hour = int.Parse(timeParts[0]);
+                int minute = int.Parse(timeParts[1]);
+
+                // Вычисляем позицию в пикселях
+                int topPosition = hour * 60 + minute;
+
+                if (group.Value.Count == 1)
                 {
-                    double startMinutes = (objective.StartTime.Hour * 60) + objective.StartTime.Minute;
-                    double endMinutes = objective.EndTime.HasValue
-                        ? (objective.EndTime.Value.Hour * 60) + objective.EndTime.Value.Minute
-                        : startMinutes + 60;
-                    double top = startMinutes;
-                    double height = Math.Max(endMinutes - startMinutes, 30);
-                    double leftPosition = (colIndex * columnWidth) + marginPercent;
-                    double rightPosition = ((colIndex + 1) * columnWidth) - marginPercent;
+                    // Одиночная задача
+                    var objective = group.Value.First();
+                    int durationMinutes = 60;
+                    if (objective.EndTime.HasValue)
+                    {
+                        durationMinutes = (int)(objective.EndTime.Value - objective.StartTime).TotalMinutes;
+                    }
+                    int heightPixels = Math.Max(durationMinutes, 30); // минимум 30px высота
 
                     <div class="objective-container @(objective.IsCompleted ? "completed" : "upcoming")"
                          data-objective-id="@objective.ObjectiveId"
-                         style="top: @(top)px; height: @(height)px; left: @(leftPosition)%; right: @(100 - rightPosition)%;"
+                         style="top: @(topPosition)px; height: @(heightPixels)px;"
                          onclick="showObjectiveDetails(@objective.ObjectiveId)">
                         <div class="objective-content">
                             <div class="objective-icon">
@@ -82,9 +79,86 @@
                         </div>
                     </div>
                 }
+                else
+                {
+                    // Группа задач - компактный вид
+                    var groupId = $"task-group-{hour}-{minute}";
+                    var completedCount = group.Value.Count(o => o.IsCompleted);
+                    var formattedTime = DateTime.ParseExact($"{hour}:{minute}", "H:m", null).ToString("HH:mm");
+
+                    <div class="objective-container task-group-compact"
+                         id="@groupId"
+                         style="top: @(topPosition)px; height: auto; min-height: 40px;"
+                         onclick="toggleTaskGroup('@groupId')">
+                        <div class="objective-content task-group-badge" style="width: 300px">
+                            <div class="objective-icon">
+                                <i class="bi bi-collection"></i>
+                            </div>
+                            <div class="objective-main-info">
+                                <div class="objective-title">
+                                    <span class="group-time">@formattedTime</span>
+                                    <span class="task-counter">@group.Value.Count задач</span>
+                                </div>
+                                <div class="objective-time">
+                                    <span class="completion-text">Выполнено: @completedCount из @group.Value.Count</span>
+                                    <div class="progress-bar">
+                                        <div class="progress" style="width: @(completedCount * 100 / Math.Max(1, group.Value.Count))%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="expand-icon">
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                        </div>
+
+                        <div class="task-group-expanded"  id="@(groupId)-expanded">
+                            @foreach (var objective in group.Value)
+                            {
+                                <div class="objective-list-item @(objective.IsCompleted ? "completed" : "upcoming")"
+                                     onclick="showObjectiveDetails(@objective.ObjectiveId); event.stopPropagation();" style="width: 700px">
+                                    <div class="objective-icon">
+                                        <i class="bi @(objective.IsCompleted ? "bi-check-circle" : "bi-calendar-event")"></i>
+                                    </div>
+                                    <div class="objective-main-info">
+                                        <div class="objective-title">@objective.Title</div>
+                                        <div class="objective-time">
+                                            @objective.StartTime.ToString("HH:mm") - @(objective.EndTime?.ToString("HH:mm") ?? "—")
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
             }
         }
     </div>
+
+    <script>
+        function toggleTaskGroup(groupId) {
+            const expandedSection = document.getElementById(groupId + '-expanded');
+            const groupElement = document.getElementById(groupId);
+            const expandIcon = groupElement.querySelector('.expand-icon i');
+
+            if (expandedSection.classList.contains('active')) {
+                expandedSection.classList.remove('active');
+                expandIcon.classList.remove('bi-chevron-up');
+                expandIcon.classList.add('bi-chevron-down');
+                groupElement.style.height = 'auto';
+                groupElement.style.minHeight = '40px';
+            } else {
+                expandedSection.classList.add('active');
+                expandIcon.classList.remove('bi-chevron-down');
+                expandIcon.classList.add('bi-chevron-up');
+
+                // Динамически рассчитываем высоту
+                const tasksHeight = group.Value.Count * 60; // Примерно 60px на задачу
+                groupElement.style.height = 'auto';
+                groupElement.style.minHeight = Math.max(40, tasksHeight) + 'px';
+            }
+        }
+    </script>
+
 </div>
 
 <!-- Модальное окно добавления -->
@@ -96,7 +170,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form asp-action="AddObjective" method="post" id="addObjectiveForm" onsubmit="return validateForm('addObjectiveForm')">
+                <form asp-action="AddObjective" method="post" id="addObjectiveForm" onsubmit="return validateTimeForm('addObjectiveForm')">
                     <input type="hidden" name="day" value="@Model.Day" />
                     <div class="mb-3">
                         <label for="addTitle" class="form-label">Название:</label>
@@ -110,12 +184,12 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="addStartTime" class="form-label">Время начала:</label>
-                            <input type="datetime-local" class="form-control" id="addStartTime" name="StartTime" required />
+                            <input type="time" class="form-control" id="addStartTime" name="StartTime" required />
                             <div class="invalid-feedback">Пожалуйста, выберите время начала</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="addEndTime" class="form-label">Время окончания:</label>
-                            <input type="datetime-local" class="form-control" id="addEndTime" name="EndTime" />
+                            <input type="time" class="form-control" id="addEndTime" name="EndTime" />
                             <div class="invalid-feedback">Время окончания должно быть позже времени начала</div>
                         </div>
                     </div>
@@ -126,14 +200,14 @@
                     </div>
                     <div id="addReminderSection" class="mb-3 d-none">
                         <label for="addReminderTime" class="form-label">Время напоминания:</label>
-                        <input type="datetime-local" class="form-control" id="addReminderTime" name="ReminderTime" />
+                        <input type="time" class="form-control" id="addReminderTime" name="ReminderTime" />
                         <div class="invalid-feedback">Время напоминания должно быть раньше времени начала задачи</div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-primary" onclick="submitForm('addObjectiveForm')">Сохранить</button>
+                <button type="button" class="btn btn-primary" onclick="submitTimeForm('addObjectiveForm')">Сохранить</button>
             </div>
         </div>
     </div>
@@ -178,7 +252,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form asp-action="EditObjective" method="post" id="editObjectiveForm" onsubmit="return validateForm('editObjectiveForm')">
+                <form asp-action="EditObjective" method="post" id="editObjectiveForm" onsubmit="return validateTimeForm('editObjectiveForm')">
                     <input type="hidden" name="ObjectiveId" id="editObjectiveId" />
                     <input type="hidden" name="day" value="@Model.Day" />
                     <div class="mb-3">
@@ -193,12 +267,12 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="editStartTime" class="form-label">Время начала:</label>
-                            <input type="datetime-local" class="form-control" id="editStartTime" name="StartTime" required />
+                            <input type="time" class="form-control" id="editStartTime" name="StartTime" required />
                             <div class="invalid-feedback">Пожалуйста, выберите время начала</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="editEndTime" class="form-label">Время окончания:</label>
-                            <input type="datetime-local" class="form-control" id="editEndTime" name="EndTime" />
+                            <input type="time" class="form-control" id="editEndTime" name="EndTime" />
                             <div class="invalid-feedback">Время окончания должно быть позже времени начала</div>
                         </div>
                     </div>
@@ -213,14 +287,14 @@
                     </div>
                     <div id="editReminderSection" class="mb-3 d-none">
                         <label for="editReminderTime" class="form-label">Время напоминания:</label>
-                        <input type="datetime-local" class="form-control" id="editReminderTime" name="ReminderTime" />
+                        <input type="time" class="form-control" id="editReminderTime" name="ReminderTime" />
                         <div class="invalid-feedback">Время напоминания должно быть раньше времени начала задачи</div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-primary" onclick="submitForm('editObjectiveForm')">Обновить</button>
+                <button type="button" class="btn btn-primary" onclick="submitTimeForm('editObjectiveForm')">Обновить</button>
             </div>
         </div>
     </div>
@@ -267,17 +341,13 @@
     <script>
         let currentObjectiveId = null;
 
-        // Добавим эту функцию в JavaScript для отображения названий дней недели
-        // В функцию validateForm добавим проверку соответствия дня недели
-        function validateForm(formId) {
+        // Новые функции для работы только с временем (без даты)
+        function validateTimeForm(formId) {
             const form = document.getElementById(formId);
             const formElements = form.elements;
 
             // Важно: отключаем стандартную HTML5 валидацию формы
             form.noValidate = true;
-
-            // Текущий день недели страницы
-            const currentPageDay = @((int)Model.Day - 1);
 
             // Сброс предыдущих ошибок
             const invalidFields = form.querySelectorAll('.is-invalid');
@@ -318,23 +388,6 @@
                 return false;
             }
 
-            // Проверка совпадения дня недели для времени начала
-            const selectedDate = new Date(startTimeInput.value);
-            const selectedDay = selectedDate.getDay();
-            // Преобразование из JS-формата (вс=0, пн=1) в ваш формат (пн=0, вт=1)
-            const adjustedSelectedDay = selectedDay === 0 ? 6 : selectedDay - 1;
-
-            if (adjustedSelectedDay !== currentPageDay) {
-                startTimeInput.classList.add('is-invalid');
-                // Добавляем собственное сообщение об ошибке
-                const dayError = document.createElement('div');
-                dayError.className = 'invalid-feedback invalid-feedback-custom';
-                dayError.textContent = `Выбрана дата для "${GetRussianDayName(adjustedSelectedDay)}", но вы находитесь на странице "${GetRussianDayName(currentPageDay)}"`;
-                dayError.style.display = 'block';
-                startTimeInput.parentNode.appendChild(dayError);
-                return false;
-            }
-
             // Проверка времени окончания, если указано
             const endTimeInput = formId === 'addObjectiveForm' ?
                 formElements.EndTime : document.getElementById('editEndTime');
@@ -344,32 +397,11 @@
             if (standardEndTimeError) standardEndTimeError.style.display = 'none';
 
             if (endTimeInput.value) {
-                // Проверка совпадения дня недели для времени окончания
-                const endTime = new Date(endTimeInput.value);
-                const selectedEndDay = endTime.getDay();
-                const adjustedSelectedEndDay = selectedEndDay === 0 ? 6 : selectedEndDay - 1;
-
-                if (adjustedSelectedEndDay !== currentPageDay) {
+                // Проверка что конец после начала
+                if (endTimeInput.value <= startTimeInput.value) {
                     endTimeInput.classList.add('is-invalid');
-                    // Добавляем собственное сообщение об ошибке
-                    const dayError = document.createElement('div');
-                    dayError.className = 'invalid-feedback invalid-feedback-custom';
-                    dayError.textContent = `Выбрана дата окончания для "${GetRussianDayName(adjustedSelectedEndDay)}", но вы находитесь на странице "${GetRussianDayName(currentPageDay)}"`;
-                    dayError.style.display = 'block';
-                    endTimeInput.parentNode.appendChild(dayError);
-                    return false;
-                }
-
-                // Только теперь проверяем логику времени (конец должен быть после начала)
-                const startTime = new Date(startTimeInput.value);
-                if (endTime <= startTime) {
-                    endTimeInput.classList.add('is-invalid');
-                    // Стандартное сообщение об ошибке не нужно, но можно добавить пользовательское
-                    const timeError = document.createElement('div');
-                    timeError.className = 'invalid-feedback invalid-feedback-custom';
-                    timeError.textContent = 'Время окончания должно быть позже времени начала';
-                    timeError.style.display = 'block';
-                    endTimeInput.parentNode.appendChild(timeError);
+                    // Стандартное сообщение об ошибке
+                    if (standardEndTimeError) standardEndTimeError.style.display = 'block';
                     return false;
                 }
             }
@@ -393,17 +425,10 @@
                     return false;
                 }
 
-                const startTime = new Date(startTimeInput.value);
-                const reminderTime = new Date(reminderTimeInput.value);
-
-                if (reminderTime >= startTime) {
+                // Проверка что напоминание раньше начала
+                if (reminderTimeInput.value >= startTimeInput.value) {
                     reminderTimeInput.classList.add('is-invalid');
-                    // Добавляем пользовательское сообщение
-                    const reminderError = document.createElement('div');
-                    reminderError.className = 'invalid-feedback invalid-feedback-custom';
-                    reminderError.textContent = 'Время напоминания должно быть раньше времени начала задачи';
-                    reminderError.style.display = 'block';
-                    reminderTimeInput.parentNode.appendChild(reminderError);
+                    if (standardReminderError) standardReminderError.style.display = 'block';
                     return false;
                 }
             }
@@ -411,7 +436,20 @@
             return true;
         }
 
-        // Функция для получения русских названий дней недели в JavaScript
+        function submitTimeForm(formId) {
+            // Сначала запускаем валидацию с помощью существующей функции validateTimeForm
+            if (validateTimeForm(formId)) {
+                // Если валидация прошла успешно, получаем элемент формы
+                const form = document.getElementById(formId);
+                // Отправляем форму напрямую.
+                // Браузер отправит значения из полей <input type="time">
+                // в виде строк "HH:mm", что и ожидает контроллер.
+                form.submit();
+            }
+            // Если validateTimeForm возвращает false, она должна сама
+            // обработать показ сообщений об ошибках, и отправка формы будет остановлена.
+        }
+
         function GetRussianDayName(dayIndex) {
             // dayIndex - принимает значения от 0 до 6, где 0 - понедельник, 6 - воскресенье
             const daysRussian = [
@@ -427,12 +465,6 @@
             return daysRussian[dayIndex] || 'Неизвестный день';
         }
 
-        function submitForm(formId) {
-            if (validateForm(formId)) {
-                document.getElementById(formId).submit();
-            }
-        }
-
         async function showObjectiveDetails(objectiveId) {
             currentObjectiveId = objectiveId;
             const response = await fetch(`/Schedule/GetObjective?objectiveId=${objectiveId}`);
@@ -440,7 +472,7 @@
 
             document.getElementById('objectiveDetailsTitle').textContent = data.title;
             document.getElementById('objectiveDetailsTime').textContent =
-                `${new Date(data.startTime).toLocaleTimeString()} - ${data.endTime ? new Date(data.endTime).toLocaleTimeString() : '—'}`;
+                `${data.startTime} - ${data.endTime || '—'}`;
             document.getElementById('objectiveDetailsDescription').textContent = data.description || 'Нет описания';
             const statusBadge = document.getElementById('objectiveStatusBadge');
             statusBadge.textContent = data.isCompleted ? 'Выполнено' : 'В процессе';
@@ -450,9 +482,17 @@
             const reminderTime = document.getElementById('reminderTime');
             if (data.reminderTime) {
                 reminderSection.classList.remove('d-none');
-                reminderTime.textContent = new Date(data.reminderTime).toLocaleString();
+                reminderTime.textContent = data.reminderTime;
             } else {
                 reminderSection.classList.add('d-none');
+            }
+
+            // Показываем/скрываем кнопку завершения в зависимости от статуса
+            const completeBtn = document.getElementById('completeObjectiveBtn');
+            if (data.isCompleted) {
+                completeBtn.classList.add('d-none');
+            } else {
+                completeBtn.classList.remove('d-none');
             }
 
             new bootstrap.Modal(document.getElementById('objectiveDetailsModal')).show();
@@ -466,9 +506,13 @@
             document.getElementById('editObjectiveId').value = data.objectiveId;
             document.getElementById('editTitle').value = data.title;
             document.getElementById('editDescription').value = data.description || '';
+            
+            // Преобразуем время из строки "HH:MM" в формат для input type="time"
             document.getElementById('editStartTime').value = data.startTime;
             document.getElementById('editEndTime').value = data.endTime || '';
             document.getElementById('editIsCompleted').checked = data.isCompleted;
+            
+            // Настройка напоминания
             document.getElementById('editAddReminder').checked = !!data.reminderTime;
             document.getElementById('editReminderTime').value = data.reminderTime || '';
             document.getElementById('editReminderSection').classList.toggle('d-none', !data.reminderTime);
@@ -523,9 +567,8 @@
                 document.getElementById('addReminderTime').value = '';
             }
         });
-
         document.getElementById('editAddReminder').addEventListener('change', function () {
-            document.getElementById('editReminderSection').classList.toggle('d-none', !this.checked);
+           document.getElementById('editReminderSection').classList.toggle('d-none', !this.checked);
             if (!this.checked) {
                 document.getElementById('editReminderTime').value = '';
             }

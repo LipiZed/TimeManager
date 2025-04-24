@@ -91,7 +91,11 @@ body {
     z-index: 1;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
-    margin-left: 60px;
+    /* Удаляем margin-left, он больше не нужен */
+    /* margin-left: 60px; */
+    /* Задаем позицию слева и справа */
+    left: 60px;   /* Начинаем после области меток времени */
+    right: 0;     /* Растягиваем до правого края родительского контейнера */
     overflow: hidden;
     min-height: 30px;
     padding: 0;
@@ -101,7 +105,6 @@ body {
     /* Прозрачность фона */
     background-color: rgba(248, 249, 250, 0.7);
     /* Эффект "бумаги" с легкой текстурой */
-
 }
 
 .objective-container:not(:hover) {
@@ -115,6 +118,7 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     opacity: 1 !important;
 }
+
 
 
 
@@ -256,6 +260,150 @@ body {
 }
 
 
+
+
+
+
+
+.task-group-compact {
+    background: linear-gradient(135deg,
+    rgba(230, 230, 250, 0.7) 0%,
+    rgba(216, 191, 216, 0.7) 100%);
+    border-left-color: #9370DB;
+    cursor: pointer;
+}
+
+.task-group-compact .objective-icon {
+    color: #9370DB;
+}
+
+.task-group-badge {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    /* Убираем промежуток между flex-элементами, включая тот, что был между main-info и expand-icon */
+    gap: 0;
+    padding: 7px 8px; /* Оставляем внутренние отступы */
+}
+
+.task-group-badge .group-time {
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.task-counter {
+    font-size: 0.85rem;
+    font-weight: normal;
+    color: #666;
+}
+
+.completion-text {
+    font-size: 0.8rem;
+    color: #666;
+    margin-right: 10px;
+}
+
+.progress-bar {
+    display: inline-block;
+    width: 60px;
+    height: 6px;
+    background-color: rgba(0,0,0,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.progress-bar .progress {
+    height: 100%;
+    background-color: #9370DB;
+}
+
+.expand-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: rgba(255,255,255,0.7);
+    transition: all 0.3s ease;
+}
+
+.expand-icon:hover {
+    background-color: rgba(255,255,255,0.9);
+}
+
+/* Расширенный список задач */
+.task-group-expanded {
+    display: none;
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+    opacity: 0;
+    margin-top: 10px;
+}
+
+.task-group-expanded.active {
+    display: block;
+    max-height: 300px;
+    overflow-y: auto;
+    opacity: 1;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    padding-top: 10px;
+}
+
+.objective-list-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    margin: 5px 10px; /* Вот эти 10px слева и справа */
+    border-radius: 6px;
+    background-color: rgba(255,255,255,0.8);
+    border-left: 4px solid;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.objective-list-item:hover {
+    background-color: rgba(255,255,255,0.95);
+    transform: translateX(5px);
+}
+
+.objective-list-item.completed {
+    border-left-color: #4CAF50;
+}
+
+.objective-list-item.completed .objective-icon {
+    color: #4CAF50;
+}
+
+.objective-list-item.upcoming {
+    border-left-color: #FFC107;
+}
+
+.objective-list-item.upcoming .objective-icon {
+    color: #FFC107;
+}
+
+.objective-list-item .objective-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+}
+
+.objective-list-item .objective-title {
+    font-size: 0.85rem;
+}
+
+.objective-list-item .objective-time {
+    font-size: 0.75rem;
+}
 
 
 
